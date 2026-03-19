@@ -262,7 +262,7 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux" \
     "handler_reset_termux" \
     "1" \
-    "Restaura split-screen de Termux + Termux:X11 e limpa residuos controlados."
+    "Reconstrói o desktop livre aprovado e limpa residuos controlados."
 
   add_action \
     "reset_x11" \
@@ -271,7 +271,7 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus x11" \
     "handler_reset_x11" \
     "1" \
-    "Mesmo reset canonico, mas deixando o foco final no Termux:X11."
+    "Mesmo reset canônico, mas deixando o foco final no Termux:X11 dentro do desktop livre."
 
   add_action \
     "start_openbox" \

@@ -112,6 +112,13 @@ Do not treat this file as a historical changelog.
     - wait for `sys.boot_completed=1` and `dev.bootcomplete=1`
     - `adb_desktop_mode.sh on`
     - `TERMUXAI_DEVICE_ID=<ADB_USB_SERIAL> bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+  - current reboot hygiene rule:
+    - before any host-triggered Android reboot in this workspace, force-stop `com.termux`, `com.termux.x11`, `com.termux.api`, and `com.server.auditor.ssh.client`
+    - toggle `desktopmode` off back to the launcher/tablet mode
+    - only then issue `adb reboot`
+  - latest direct validation of that rule on the live tablet passed:
+    - before reboot, launcher focus was restored, `inDesktopWindowing=false`, and no visible tasks remained for `Termux`, `Termux:X11`, or `Terminus`
+    - after reboot, the tablet returned to launcher focus with `inDesktopWindowing=false` and still no visible tasks for that trio
 - Current validated Android desktop-state continuity:
   - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
   - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows
@@ -187,8 +194,8 @@ Do not treat this file as a historical changelog.
   - with both transports present, the host wrappers correctly auto-selected the USB target
   - stale `offline` transports on old Wi‑Fi ports may accumulate and should be disconnected before continuing
 - Important scope boundary:
-  - keep `adb_reset_termux_stack.sh` and the baseline validation flow on the validated split-screen path
-  - use the freeform helper after the stack is already up when the operator wants the Android desktop-mode arrangement
+  - `adb_reset_termux_stack.sh` now rebuilds the validated desktop mode/freeform arrangement directly and no longer treats Android split layout as the canonical path
+  - use the freeform helper as the canonical way to reapply or rebuild the approved Android desktop layout
 
 ## Current LM Studio State
 - LM Studio UI is installed from `LM-Studio-0.4.6-1-x64.AppImage`.

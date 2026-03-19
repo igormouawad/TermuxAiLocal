@@ -103,8 +103,8 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O provisionamento terminou sem conseguir restaurar o split-screen obrigatório de Termux + Termux:X11.' \
-    'Reabrir Termux e Termux:X11 ou repetir o provisionamento.'
+    'O provisionamento terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
+    'Reconstruir o desktop livre aprovado ou repetir o provisionamento.'
 fi
 
 printf 'Provisionamento concluído no host.\n'

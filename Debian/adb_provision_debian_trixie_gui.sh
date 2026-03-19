@@ -84,8 +84,8 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O provisionamento Debian terminou sem conseguir restaurar o split-screen obrigatório nem confirmar o app Termux:API em execução.' \
-    'Reabrir Termux, Termux:X11 e Termux:API ou repetir o provisionamento.'
+    'O provisionamento Debian terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
+    'Reconstruir o desktop livre aprovado e repetir o provisionamento.'
 fi
 
 install_command=(bash /data/local/tmp/install_debian_trixie_gui.sh)

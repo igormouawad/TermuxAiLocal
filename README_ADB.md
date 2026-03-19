@@ -102,7 +102,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - audita os apps Android obrigatórios no usuário principal Android suportado pelo ADB (`--user 0`)
 - transfere o payload `Install/install_termux_stack.sh` para `/data/local/tmp/install_termux_stack.sh`
 - aplica `chmod +x` no payload
-- garante `Termux:API` ativo e restaura `Termux` + `Termux:X11` lado a lado
+- garante o desktop mode livre do workspace e restaura `Termux`, `Termux:X11` e o cliente SSH no arranjo aprovado
 - orienta a execução manual do payload
 
 `Install/adb_reinstall_termux_official.sh`:
@@ -164,7 +164,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
   - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) embaixo à esquerda
   - `Termux:X11` à direita com altura ajustada ao conteúdo útil, sem sobra preta acima/abaixo no arranjo validado
 - com `--restart`, fecha esses três apps e recria o layout completo para teste de reabertura
-- se a sessão gráfica estiver inativa, sobe `Openbox` com o perfil pedido sem voltar ao fluxo de split-screen
+- se a sessão gráfica estiver inativa, sobe `Openbox` com o perfil pedido sem voltar a layouts legados do Android
 
 Observação importante sobre transporte host-side:
 
@@ -178,8 +178,8 @@ Observação importante sobre transporte host-side:
 - faz reset completo de `com.termux`, `com.termux.x11` e `com.termux.api`
 - executa também uma limpeza remota best-effort da sessão gráfica anterior dentro do contexto do app Termux, removendo Openbox/XFCE, terminais leves, `virgl`, `dbus` de sessão e caches controlados do projeto
 - mata e valida a remoção dos processos residuais do ecossistema Termux antes de reabrir os apps
-- garante `Termux:API` ativo no estado final
-- reabre `Termux` e `Termux:X11` sempre em split-screen, com `Termux` à esquerda e `Termux:X11` à direita
+- mantém `Termux:API` fora do desktop visível; a app só entra automaticamente no reinstall limpo
+- reabre o desktop mode livre do workspace com `Termux`, `Termux:X11` e o cliente SSH nas janelas aprovadas
 - permite escolher o foco final com `--focus termux|x11`
 - deve ser o primeiro passo de qualquer fluxo novo e o passo obrigatório depois de qualquer falha de automação
 
@@ -357,11 +357,12 @@ bash /data/local/tmp/install_termux_stack.sh
 bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 ```
 
-5.1.1. O reset host-side agora restaura automaticamente o layout obrigatório do projeto:
+5.1.1. O reset host-side agora restaura automaticamente o layout obrigatório do projeto em desktop mode livre:
 
-- `Termux` à esquerda
+- `Termux` no topo esquerdo
 - `Termux:X11` à direita
-- ambos visíveis lado a lado antes de qualquer novo teste
+- cliente SSH embaixo à esquerda
+- `Termux:API` fora do desktop visível
 
 5.2. Antes de digitar qualquer novo comando via ADB, confirmar qual app está focado:
 

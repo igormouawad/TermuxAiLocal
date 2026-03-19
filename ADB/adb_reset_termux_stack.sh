@@ -40,6 +40,7 @@ kill_termux_side_processes() {
 }
 
 reboot_device_for_clean_state() {
+  termux::prepare_android_reboot_state "$DEVICE_ID"
   adb -s "$DEVICE_ID" reboot >/dev/null 2>&1 || true
   if ! termux::wait_for_device_ready "$DEVICE_ID" 120; then
     fail \
@@ -70,9 +71,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --help|-h)
       printf 'Uso: %s [--focus termux|x11] [--reboot-if-needed]\n' "$0"
-      printf '  --focus termux  reabre e deixa foco final no app Termux.\n'
-      printf '  --focus x11     reabre e deixa foco final no app Termux:X11.\n'
-      printf '  --reboot-if-needed  reinicia o dispositivo se um processo Termux/X11 sobreviver ao reset normal.\n'
+      printf '  --focus termux  reconstrói o desktop livre e deixa foco final no app Termux.\n'
+      printf '  --focus x11     reconstrói o desktop livre e deixa foco final no app Termux:X11.\n'
+      printf '  --reboot-if-needed  reinicia o dispositivo se resíduos persistentes impedirem o reset limpo.\n'
       exit 0
       ;;
     *)
@@ -128,17 +129,29 @@ if ! termux::wait_for_no_termux_processes "$DEVICE_ID" 8; then
     'Executar novamente com --reboot-if-needed ou eliminar os processos residuais antes de repetir o fluxo.'
 fi
 
-if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" "$FOCUS_APP"; then
+workspace_ready=0
+if termux::ensure_termux_workspace_ready "$DEVICE_ID" "$FOCUS_APP"; then
+  workspace_ready=1
+else
+  if [ "$REBOOT_IF_NEEDED" -eq 1 ]; then
+    reboot_device_for_clean_state
+    if termux::ensure_termux_workspace_ready "$DEVICE_ID" "$FOCUS_APP"; then
+      workspace_ready=1
+    fi
+  fi
+fi
+
+if [ "$workspace_ready" -ne 1 ]; then
   fail \
     'reabertura validada do ecossistema Termux' \
     "$(current_focus)" \
-    'O reset terminou sem conseguir restaurar o split-screen obrigatório de Termux + Termux:X11.' \
-    'Reabrir Termux e Termux:X11 ou repetir o reset para restaurar o estado operacional do projeto.'
+    'O reset terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
+    'Repetir o reset, preferencialmente com --reboot-if-needed, para reconstruir o layout operacional do projeto.'
 fi
 
 printf 'Ecossistema Termux reiniciado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Foco final solicitado: %s\n' "$FOCUS_APP"
-printf 'Layout final: Termux + Termux:X11 lado a lado\n'
-printf 'Termux:API: não faz parte do layout diário; a app só é aberta automaticamente no reinstall limpo.\n'
+printf 'Layout final: desktop mode livre com Termux, Termux:X11 e cliente SSH nas janelas aprovadas.\n'
+printf 'Termux:API: fora do desktop visível; a app só entra automaticamente no reinstall limpo.\n'
 printf 'Processos remanescentes após o reset: %s\n' "$(termux::termux_process_count "$DEVICE_ID")"
 printf '%s\n' "$(current_focus)"

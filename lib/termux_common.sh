@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+TERMUX_WORKSPACE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
 termux::stderr() {
   printf '%s\n' "$*" >&2
 }
@@ -276,57 +278,6 @@ termux::activity_task_id() {
   '
 }
 
-termux::task_stage() {
-  local device_id="$1"
-  local task_id="$2"
-
-  adb -s "$device_id" shell dumpsys activity activities 2>/dev/null | awk -v task_id="$task_id" '
-    index($0, "Task{") && $0 ~ ("#" task_id "([^0-9]|$)") {
-      current_stage = $0
-      sub(/^.*stage=/, "", current_stage)
-      sub(/ .*/, "", current_stage)
-      if (current_stage != $0) {
-        print current_stage
-        exit
-      }
-    }
-  '
-}
-
-termux::wait_for_split_pair() {
-  local device_id="$1"
-  local timeout_seconds="${2:-10}"
-  local deadline_seconds
-  local termux_task_id
-  local x11_task_id
-  local termux_stage
-  local x11_stage
-
-  deadline_seconds=$(( $(date +%s) + timeout_seconds ))
-
-  while :; do
-    termux_task_id="$(termux::activity_task_id "$device_id" 'com.termux/.app.TermuxActivity' || true)"
-    x11_task_id="$(termux::activity_task_id "$device_id" 'com.termux.x11/.MainActivity' || true)"
-
-    if [ -n "$termux_task_id" ] && [ -n "$x11_task_id" ]; then
-      termux_stage="$(termux::task_stage "$device_id" "$termux_task_id" || true)"
-      x11_stage="$(termux::task_stage "$device_id" "$x11_task_id" || true)"
-
-      if [ "$termux_stage" = 'main/left' ] && [ "$x11_stage" = 'side/right' ]; then
-        return 0
-      fi
-    fi
-
-    if [ "$(date +%s)" -ge "$deadline_seconds" ]; then
-      break
-    fi
-
-    sleep 0.3
-  done
-
-  return 1
-}
-
 termux::package_pid() {
   local device_id="$1"
   local package_name="$2"
@@ -376,85 +327,103 @@ termux::ensure_termux_api_running() {
   termux::wait_for_package_process "$device_id" 'com.termux.api' "$timeout_seconds" >/dev/null
 }
 
+termux::desktop_mode_dump() {
+  local device_id="$1"
+
+  adb -s "$device_id" shell wm shell desktopmode dump 2>/dev/null | tr -d '\r'
+}
+
+termux::desktop_mode_active() {
+  local device_id="$1"
+
+  termux::desktop_mode_dump "$device_id" | grep -Fq 'inDesktopWindowing=true'
+}
+
+termux::wait_for_desktop_mode_state() {
+  local device_id="$1"
+  local expected_state="$2"
+  local timeout_seconds="${3:-12}"
+  local deadline_seconds
+
+  deadline_seconds=$(( $(date +%s) + timeout_seconds ))
+
+  while :; do
+    if [ "$expected_state" = 'on' ] && termux::desktop_mode_active "$device_id"; then
+      return 0
+    fi
+
+    if [ "$expected_state" = 'off' ] && ! termux::desktop_mode_active "$device_id"; then
+      return 0
+    fi
+
+    if [ "$(date +%s)" -ge "$deadline_seconds" ]; then
+      break
+    fi
+
+    sleep 0.5
+  done
+
+  return 1
+}
+
+termux::prepare_android_reboot_state() {
+  local device_id="$1"
+
+  adb -s "$device_id" shell am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null 2>&1 || true
+  adb -s "$device_id" shell cmd activity kill com.termux.x11 >/dev/null 2>&1 || true
+  adb -s "$device_id" shell cmd activity kill com.termux >/dev/null 2>&1 || true
+  adb -s "$device_id" shell cmd activity kill com.termux.api >/dev/null 2>&1 || true
+  adb -s "$device_id" shell cmd activity kill com.server.auditor.ssh.client >/dev/null 2>&1 || true
+  adb -s "$device_id" shell am force-stop com.termux.x11 >/dev/null 2>&1 || true
+  adb -s "$device_id" shell am force-stop com.termux >/dev/null 2>&1 || true
+  adb -s "$device_id" shell am force-stop com.termux.api >/dev/null 2>&1 || true
+  adb -s "$device_id" shell am force-stop com.server.auditor.ssh.client >/dev/null 2>&1 || true
+
+  if termux::desktop_mode_active "$device_id"; then
+    adb -s "$device_id" shell wm shell desktopmode toggleDesktopWindowingInDefaultDisplay >/dev/null 2>&1 || true
+    termux::wait_for_desktop_mode_state "$device_id" off 12 || true
+  fi
+
+  adb -s "$device_id" shell input keyevent KEYCODE_HOME >/dev/null 2>&1 || true
+  sleep 1
+}
+
 termux::ensure_termux_workspace_ready() {
   local device_id="$1"
   local focus_target="${2:-termux}"
-
-  if ! termux::open_termux_split_pair "$device_id" "$focus_target"; then
-    return 1
-  fi
-}
-
-termux::open_termux_split_pair() {
-  local device_id="$1"
-  local focus_target="${2:-termux}"
-  local x11_task_id
+  local output
+  local status
 
   case "$focus_target" in
-    termux|x11)
+    termux|x11|ssh)
       ;;
     *)
       return 1
       ;;
   esac
 
-  if termux::wait_for_split_pair "$device_id" 2; then
-    case "$focus_target" in
-      termux)
-        termux::start_activity_and_wait "$device_id" 'com.termux/.app.TermuxActivity' 'com.termux/.app.TermuxActivity' 10 >/dev/null || return 1
-        ;;
-      x11)
-        termux::start_activity_and_wait "$device_id" 'com.termux.x11/.MainActivity' 'com.termux.x11/.MainActivity' 10 >/dev/null || return 1
-        ;;
-    esac
-
-    termux::wait_for_split_pair "$device_id" 10
-    return $?
-  fi
-
-  for _ in 1 2 3; do
-    if ! termux::start_activity_and_wait "$device_id" 'com.termux/.app.TermuxActivity' 'com.termux/.app.TermuxActivity' 10 >/dev/null; then
-      continue
-    fi
-
-    if ! adb -s "$device_id" shell am start -n 'com.termux.x11/.MainActivity' >/dev/null 2>&1; then
-      continue
-    fi
-
-    x11_task_id="$(termux::wait_for_activity_task_id "$device_id" 'com.termux.x11/.MainActivity' 6 0.3 || true)"
-    if [ -z "$x11_task_id" ]; then
-      continue
-    fi
-
-    adb -s "$device_id" shell wm shell splitscreen setSideStagePosition 1 >/dev/null 2>&1 || true
-    adb -s "$device_id" shell wm shell splitscreen moveToSideStage "$x11_task_id" 1 >/dev/null 2>&1 || true
-    termux::start_activity_and_wait "$device_id" 'com.termux/.app.TermuxActivity' 'com.termux/.app.TermuxActivity' 10 >/dev/null 2>&1 || true
-
-    if termux::wait_for_split_pair "$device_id" 6; then
-      break
-    fi
-
-    sleep 1
-  done
-
-  if ! termux::wait_for_split_pair "$device_id" 6; then
+  set +e
+  output="$(
+    TERMUXAI_DEVICE_ID="$device_id" \
+      bash "${TERMUX_WORKSPACE_ROOT}/ADB/adb_desktop_mode.sh" on 2>&1
+  )"
+  status=$?
+  set -e
+  if [ "$status" -ne 0 ]; then
     return 1
   fi
 
-  case "$focus_target" in
-    termux)
-      if ! termux::start_activity_and_wait "$device_id" 'com.termux/.app.TermuxActivity' 'com.termux/.app.TermuxActivity' 10 >/dev/null; then
-        return 1
-      fi
-      ;;
-    x11)
-      if ! termux::start_activity_and_wait "$device_id" 'com.termux.x11/.MainActivity' 'com.termux.x11/.MainActivity' 10 >/dev/null; then
-        return 1
-      fi
-      ;;
-  esac
+  set +e
+  output="$(
+    TERMUXAI_DEVICE_ID="$device_id" \
+      bash "${TERMUX_WORKSPACE_ROOT}/ADB/adb_consolidate_freeform_desktop.sh" \
+        --no-openbox \
+        --focus "$focus_target" 2>&1
+  )"
+  status=$?
+  set -e
 
-  termux::wait_for_split_pair "$device_id" 10
+  [ "$status" -eq 0 ]
 }
 
 termux::dump_ui_xml() {

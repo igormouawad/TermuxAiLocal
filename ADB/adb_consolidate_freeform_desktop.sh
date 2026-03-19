@@ -357,27 +357,39 @@ start_freeform_activity() {
 resolve_desktop_desk_id() {
   local dump_output
   local desk_id
+  local deadline_seconds
 
-  dump_output="$(
-    adb -s "$DEVICE_ID" shell wm shell desktopmode dump 2>/dev/null \
-      | tr -d '\r'
-  )"
+  deadline_seconds=$(( $(date +%s) + 12 ))
 
-  desk_id="$(
-    printf '%s\n' "$dump_output" \
-      | sed -nE 's/^[[:space:]]*Desk #([0-9]+):.*/\1/p' \
-      | head -n1
-  )"
+  while :; do
+    dump_output="$(
+      adb -s "$DEVICE_ID" shell wm shell desktopmode dump 2>/dev/null \
+        | tr -d '\r'
+    )"
 
-  if [ -z "$desk_id" ]; then
-    fail \
-      'wm shell desktopmode dump' \
-      "${dump_output:-sem saída}" \
-      'O Android não expôs um desk ativo para o modo desktop/freeform.' \
-      'Confirmar que o dispositivo está em desktop mode antes de consolidar as janelas.'
-  fi
+    desk_id="$(
+      printf '%s\n' "$dump_output" \
+        | sed -nE 's/^[[:space:]]*Desk #([0-9]+):.*/\1/p' \
+        | head -n1
+    )"
 
-  printf '%s\n' "$desk_id"
+    if [ -n "$desk_id" ]; then
+      printf '%s\n' "$desk_id"
+      return 0
+    fi
+
+    if [ "$(date +%s)" -ge "$deadline_seconds" ]; then
+      break
+    fi
+
+    sleep 0.5
+  done
+
+  fail \
+    'wm shell desktopmode dump' \
+    "${dump_output:-sem saída}" \
+    'O Android não expôs um desk ativo para o modo desktop/freeform.' \
+    'Confirmar que o dispositivo está em desktop mode antes de consolidar as janelas.'
 }
 
 task_id_by_package() {

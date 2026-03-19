@@ -181,8 +181,8 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O host não conseguiu garantir o split-screen obrigatório de Termux + Termux:X11 antes da subida do desktop.' \
-    'Restaurar Termux e Termux:X11 e repetir a operação.'
+    'O host não conseguiu garantir o desktop mode livre obrigatório antes da subida do desktop.' \
+    'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
 
 if ! termux::desktop_profile_valid "$DESKTOP_PROFILE"; then

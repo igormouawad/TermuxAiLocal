@@ -140,6 +140,8 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
 bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 ```
 
+This reset now rebuilds the approved Samsung desktop mode/freeform layout instead of any legacy Android split layout.
+
 - Start validated desktop:
 
 ```bash

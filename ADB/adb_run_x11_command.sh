@@ -93,8 +93,8 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O host não conseguiu garantir o split-screen obrigatório de Termux + Termux:X11 antes da execução no X11.' \
-    'Restaurar Termux e Termux:X11 e repetir a operação.'
+    'O host não conseguiu garantir o desktop mode livre obrigatório antes da execução no X11.' \
+    'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
 
 if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 10; then

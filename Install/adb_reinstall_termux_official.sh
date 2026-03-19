@@ -356,6 +356,7 @@ reboot_if_residual_processes_remain() {
   fi
 
   log_step 'Processos residuais sobreviveram ao uninstall; reiniciando o dispositivo para concluir a limpeza.'
+  termux::prepare_android_reboot_state "$DEVICE_ID"
   adb -s "$DEVICE_ID" reboot >/dev/null 2>&1 || true
 
   if ! termux::wait_for_device_ready "$DEVICE_ID" 180; then
