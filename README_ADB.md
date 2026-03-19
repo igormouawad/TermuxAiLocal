@@ -17,7 +17,12 @@ Este projeto organiza o provisionamento de uma stack Termux/Termux:X11 em dispos
 
 `/home/igor/Documentos/AI/TermuxAiLocal`
 
-Os scripts host-side resolvem essa raiz dinamicamente a partir do diretório do repositório e compartilham a biblioteca `lib/termux_common.sh` para padronizar falhas, checagem de dependências, resolução do único device ADB e execução remota com `adb -s`.
+Os scripts host-side resolvem essa raiz dinamicamente a partir do diretório do repositório e compartilham a biblioteca `lib/termux_common.sh` para padronizar falhas, checagem de dependências, seleção do alvo ADB e execução remota com `adb -s`.
+
+Seleção de device ADB:
+
+- com exatamente um alvo em `adb devices`, os wrappers host-side autodetectam o device
+- com múltiplos alvos, defina `TERMUXAI_DEVICE_ID=SERIAL` ou use `--device SERIAL` nos helpers que expõem essa flag
 
 Tudo que é referente à instalação fica dentro de `Install/`.
 
@@ -80,8 +85,8 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `Debian/adb_provision_debian_trixie_gui.sh`: provisiona no dispositivo os payloads Debian GUI e imprime tanto o comando manual no Termux quanto o wrapper host-side síncrono de instalação.
 - `Debian/adb_install_debian_trixie_gui.sh`: executa do host a instalação Debian GUI dentro do app Termux, via `run-as+spool`, sem watchdog remoto e com saída contida.
 - `Debian/install_debian_trixie_gui.sh`: payload principal executado dentro do app Termux para instalar e configurar o Debian Trixie no `proot-distro`.
-- `Debian/configure_debian_trixie_root.sh`: configuração interna do Debian como `root`, incluindo pacotes GUI base, `sudo`, grupos e usuário `igor`.
-- `Debian/configure_debian_trixie_user_igor.sh`: configuração interna do usuário `igor`, incluindo envs e launchers estável/experimental.
+- `Debian/configure_debian_trixie_root.sh`: configuração interna do Debian como `root`, incluindo pacotes GUI base, `sudo`, grupos e criação/ajuste do usuário Debian escolhido pelo operador.
+- `Debian/configure_debian_trixie_user.sh`: configuração interna do usuário Debian escolhido, incluindo envs e launchers estável/experimental.
 - `Debian/run_gui_in_debian.sh`: launcher Termux-side genérico para abrir qualquer app GUI do Debian no X11 `:1` já existente.
 
 ## Função dos scripts
@@ -89,7 +94,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 `Install/adb_provision.sh`:
 
 - valida `adb`
-- detecta o dispositivo uma única vez
+- autodetecta um único device ADB; com múltiplos alvos, exige seleção explícita via `TERMUXAI_DEVICE_ID` ou pelas flags suportadas pelo helper
 - audita os apps Android obrigatórios no usuário principal Android suportado pelo ADB (`--user 0`)
 - transfere o payload `Install/install_termux_stack.sh` para `/data/local/tmp/install_termux_stack.sh`
 - aplica `chmod +x` no payload
@@ -99,7 +104,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 `Install/adb_reinstall_termux_official.sh`:
 
 - valida `adb`, `curl` e `python3` no host
-- detecta exatamente um dispositivo ADB e exige ABI `arm64-v8a`
+- autodetecta um único device ADB e exige ABI `arm64-v8a`; com múltiplos alvos, exige seleção explícita
 - resolve por GitHub API as releases oficiais mais recentes de `termux-app`, `termux-api` e `termux-x11`
 - com `--dry-run`, valida releases e downloads no host sem tocar a instalação atual do dispositivo
 - baixa apenas APKs oficiais do owner `termux`
@@ -117,7 +122,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 
 `ADB/adb_validate_baseline.sh`:
 
-- valida `adb` e detecta exatamente um dispositivo
+- valida `adb` e trabalha sobre o alvo ADB selecionado
 - reinicia `com.termux`, `com.termux.x11` e `com.termux.api` antes do teste
 - valida o desktop escolhido com `--desktop=openbox|xfce`
 - confirma por retorno síncrono dos helpers a presença dos comandos de start e stop do desktop selecionado
@@ -230,20 +235,21 @@ Observação importante sobre perfis Android:
 - garante `proot-distro`, `pulseaudio` e `dbus` no host Termux
 - instala uma instância Debian Trixie dedicada com alias próprio no `proot-distro`
 - copia os payloads internos do Debian para dentro do rootfs
-- executa a configuração root e depois a configuração do usuário `igor`
+- coleta ou recebe nome do usuário Debian, senha e política de sudo
+- executa a configuração root e depois a configuração do usuário Debian escolhido
 - instala os helpers `run-gui-debian` e `login-debian-gui` em `~/bin`
 
 `Debian/configure_debian_trixie_root.sh`:
 
 - atualiza o `apt` do Debian Trixie
 - instala `sudo`, `dbus-x11`, `pulseaudio`, `mesa-utils`, `mesa-utils-extra`, `x11-apps`, `xauth`, `xterm`, `openbox`, `xfce4-session`, `xfce4-panel`, `xfwm4`, `xfce4-terminal`, `xfce4-settings`, `thunar` e `glmark2`
-- cria ou atualiza o usuário `igor`
-- adiciona `igor` aos grupos Debian relevantes (`sudo`, `audio`, `video`, `render`, `input`, `plugdev`, `users`)
-- configura `sudo` para `igor`
+- cria ou atualiza o usuário Debian escolhido pelo operador
+- adiciona esse usuário aos grupos Debian relevantes (`sudo`, `audio`, `video`, `render`, `input`, `plugdev`, `users`)
+- configura `sudo` com ou sem senha conforme a política escolhida
 
-`Debian/configure_debian_trixie_user_igor.sh`:
+`Debian/configure_debian_trixie_user.sh`:
 
-- cria o runtime X11 do usuário em `/tmp/runtime-igor`
+- cria o runtime X11 do usuário em `/tmp/runtime-<usuario>`
 - grava um arquivo de ambiente para `DISPLAY=:1`, `XDG_RUNTIME_DIR`, `TERMUX_X11_WM`, locale e modo de renderização padrão em hardware
 - cria `~/bin/start-xfce-termux-x11`, que sobe o XFCE dentro do Debian e aceita `--wm xfwm4|openbox`
 - cria `~/bin/run-gui-termux` como launcher genérico em hardware com `GALLIUM_DRIVER=virpipe`
@@ -254,7 +260,7 @@ Observação importante sobre perfis Android:
 
 - exige uma sessão X11/desktop já ativa no display `:1`
 - entra no Debian Trixie pelo `proot-distro`
-- troca para o usuário `igor`
+- troca para o usuário Debian gravado em `~/.config/termux-stack/debian-gui.env` ou informado via `--user`
 - lança qualquer aplicativo GUI em hardware por padrão
 - sobe `start-virgl` automaticamente quando o modo de hardware é solicitado e o servidor ainda não está ativo
 - aceita `--renderer hardware|software|virgl`, com `software` apenas como fallback explícito
@@ -376,7 +382,7 @@ Ou, diretamente do host com sincronização real:
 bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh
 ```
 
-4. Depois da instalação do Debian Trixie e do usuário `igor`, garantir uma sessão gráfica ativa em `:1`.
+4. Depois da instalação do Debian Trixie e do usuário escolhido, garantir uma sessão gráfica ativa em `:1`.
 
 No host:
 

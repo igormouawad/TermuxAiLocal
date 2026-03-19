@@ -66,10 +66,10 @@ Use:
 - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-- `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+- `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-- `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+- `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 ### Minimal repair
 - Inspect first with one targeted probe such as `termux-stack-status --brief`.
@@ -124,10 +124,10 @@ Good fallback when tools are not available:
 1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 2. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 3. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 6. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-7. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+7. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Bad answer:
 - responder apenas `Continue read`

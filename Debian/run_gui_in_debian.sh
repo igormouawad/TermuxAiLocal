@@ -3,11 +3,12 @@
 set -euo pipefail
 
 DISTRO_ALIAS="debian-trixie-gui"
-PROOT_USER="igor"
+PROOT_USER=""
 RENDERER="hardware"
 RUN_MODE="background"
 TERMUX_GUI_PULSE_SERVER=""
 APP_LABEL="Aplicativo"
+TERMUX_STACK_DEBIAN_CONFIG="${HOME}/.config/termux-stack/debian-gui.env"
 
 fail() {
   local command_text="$1"
@@ -25,6 +26,13 @@ fail() {
 
 desktop_is_active() {
   pgrep -f '^openbox( |$)|openbox-session|^xterm( |$)|^xfce4-session( |$)|^xfwm4( |$)|^xfdesktop( |$)|^xfce4-panel( |$)|termux-x11 .*:1|termux-x11 :1' >/dev/null 2>&1
+}
+
+load_termux_debian_config() {
+  if [ -f "$TERMUX_STACK_DEBIAN_CONFIG" ]; then
+    # shellcheck source=/dev/null
+    . "$TERMUX_STACK_DEBIAN_CONFIG"
+  fi
 }
 
 ensure_hardware_path() {
@@ -62,8 +70,12 @@ ensure_hardware_path() {
 }
 
 usage() {
-  printf 'Uso: %s [--alias nome] [--user igor] [--renderer hardware|software|virgl] [--background|--foreground] [--pulse-server tcp:127.0.0.1:4713] [--label nome] -- comando [args...]\n' "$0"
+  printf 'Uso: %s [--alias nome] [--user nome] [--renderer hardware|software|virgl] [--background|--foreground] [--pulse-server tcp:127.0.0.1:4713] [--label nome] -- comando [args...]\n' "$0"
 }
+
+load_termux_debian_config
+DISTRO_ALIAS="${TERMUX_X11_DISTRO_ALIAS:-$DISTRO_ALIAS}"
+PROOT_USER="${TERMUX_X11_DISTRO_USER:-$PROOT_USER}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -135,7 +147,7 @@ if [ -z "$DISTRO_ALIAS" ] || [ -z "$PROOT_USER" ]; then
     'validação de argumentos' \
     'Alias e usuário Debian precisam ser não vazios.' \
     'Não é possível localizar o launcher correto dentro do proot.' \
-    'Fornecer valores válidos com --alias e --user.'
+    'Executar a instalação Debian GUI para gravar ~/.config/termux-stack/debian-gui.env ou fornecer valores válidos com --alias e --user.'
 fi
 
 if ! desktop_is_active; then

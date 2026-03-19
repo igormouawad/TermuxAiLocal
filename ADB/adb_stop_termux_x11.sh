@@ -23,7 +23,7 @@ termux::require_host_command \
   'Não é possível encerrar o Termux:X11 a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 
 set +e
 bash "${SCRIPT_DIR}/adb_termux_send_command.sh" \

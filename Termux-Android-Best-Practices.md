@@ -34,7 +34,7 @@ This note captures the cleaned-up flow for the Termux/X11 stack, including the h
 ## 4. Debian GUI
 
 - The Debian helper scripts install `sudo`, `mesa-utils`, `x11-apps`, `glmark2`, `openbox` and the generic GUI stack needed for arbitrary apps.
-- `igor` is added to all relevant groups and gets a passwordless sudoers entry (`/etc/sudoers.d/igor`). The helper writes `~/.config/termux-stack/env.sh` containing session envs such as `DISPLAY` and `XDG_RUNTIME_DIR`, the XFCE WM selector `TERMUX_X11_WM`, and GUI compatibility envs such as `QT_QPA_PLATFORM=xcb` and `SDL_VIDEODRIVER=x11`.
+- The Debian install flow now asks the operator for the Debian username, password, and whether sudo should require a password. The chosen user is added to the relevant groups, gets the matching sudoers policy, and receives `~/.config/termux-stack/env.sh` plus `~/.config/termux-stack/debian-gui.env` so Termux-side launchers can derive `DISPLAY`, `XDG_RUNTIME_DIR`, `TERMUX_X11_WM`, `TERMUX_X11_DISTRO_ALIAS`, and `TERMUX_X11_DISTRO_USER` dynamically.
 - `run-gui-termux` is now the generic Debian-side launcher: it loads the shared env, sets `GALLIUM_DRIVER=virpipe` for hardware mode (or `LIBGL_ALWAYS_SOFTWARE` for software mode), and runs `dbus-run-session -- "$@"`.
 - `run-gui-debian -- comando [args...]` is the Termux-side entrypoint for arbitrary Debian GUI apps.
 - Use `proot-distro login --shared-tmp ...` for Debian GUI clients so the proot shares runtime/tmp state with the host Termux session. Before launching an app, ensure `termux-stack-status` reports `DESKTOP=openbox` or `DESKTOP=xfce-*`, plus `X11=display-ready`. Debian-level helper logs live under `/tmp` for quick inspection.

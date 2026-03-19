@@ -175,7 +175,7 @@ termux::require_host_command \
   'Não é possível subir o desktop via host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \

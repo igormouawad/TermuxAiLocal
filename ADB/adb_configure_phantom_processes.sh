@@ -127,7 +127,7 @@ termux::require_host_command \
   'Não é possível configurar o dispositivo Android a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID="$(termux::resolve_single_device)"
+DEVICE_ID="$(termux::resolve_target_device)"
 
 if [ "$MODE" = 'status' ]; then
   print_status

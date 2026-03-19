@@ -114,7 +114,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 resolve_device() {
-  DEVICE_ID=$(termux::resolve_single_device)
+  DEVICE_ID=$(termux::resolve_target_device)
 }
 
 verify_device_abi() {

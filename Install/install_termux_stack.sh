@@ -846,6 +846,7 @@ set -euo pipefail
 
 session_file="$HOME/.config/termux-stack/session.env"
 driver_file="$HOME/.config/termux-stack/driver.env"
+distro_config_file="$HOME/.config/termux-stack/debian-gui.env"
 
 if [ -f "$session_file" ]; then
   # shellcheck source=/dev/null
@@ -856,10 +857,13 @@ if [ -f "$driver_file" ]; then
   . "$driver_file"
 fi
 
-distro_user="${TERMUX_X11_DISTRO_USER:-igor}"
+if [ -f "$distro_config_file" ]; then
+  # shellcheck source=/dev/null
+  . "$distro_config_file"
+fi
 
 if command -v run-gui-debian >/dev/null 2>&1; then
-  exec run-gui-debian --label 'Debian Terminal' -- xfce4-terminal --working-directory="/home/${distro_user}" --title='Debian Terminal'
+  exec run-gui-debian --label 'Debian Terminal' -- xfce4-terminal --disable-server --title='Debian Terminal'
 fi
 
 if command -v aterm >/dev/null 2>&1; then
@@ -880,6 +884,7 @@ set -euo pipefail
 
 session_file="$HOME/.config/termux-stack/session.env"
 driver_file="$HOME/.config/termux-stack/driver.env"
+distro_config_file="$HOME/.config/termux-stack/debian-gui.env"
 
 if [ -f "$session_file" ]; then
   # shellcheck source=/dev/null
@@ -889,8 +894,14 @@ if [ -f "$driver_file" ]; then
   # shellcheck source=/dev/null
   . "$driver_file"
 fi
+if [ -f "$distro_config_file" ]; then
+  # shellcheck source=/dev/null
+  . "$distro_config_file"
+fi
 
 applications_dir="$HOME/.local/share/applications"
+distro_alias="${TERMUX_X11_DISTRO_ALIAS:-debian-trixie-gui}"
+distro_user="${TERMUX_X11_DISTRO_USER:-}"
 mkdir -p "$applications_dir"
 
 cat > "$applications_dir/openbox-terminal.desktop" <<'EOF2'
@@ -923,8 +934,8 @@ StartupNotify=true
 Categories=Settings;DesktopSettings;
 EOF2
 
-if command -v proot-distro >/dev/null 2>&1; then
-  (timeout 6 proot-distro login --no-arch-warning --user igor --shared-tmp debian-trixie-gui -- /home/igor/bin/sync-termux-desktop-entries >/dev/null 2>&1 || true) &
+if command -v proot-distro >/dev/null 2>&1 && [ -n "$distro_user" ]; then
+  (timeout 6 proot-distro login --no-arch-warning --user "$distro_user" --shared-tmp "$distro_alias" -- "/home/${distro_user}/bin/sync-termux-desktop-entries" >/dev/null 2>&1 || true) &
 fi
 
 if command -v rofi >/dev/null 2>&1; then
@@ -1474,8 +1485,18 @@ stack_xfce_ready() {
 }
 
 stack_xfce_base_ready_in_distro() {
+  local distro_config_file="${HOME}/.config/termux-stack/debian-gui.env"
   local distro_alias="${TERMUX_X11_DISTRO_ALIAS:-debian-trixie-gui}"
-  local distro_user="${TERMUX_X11_DISTRO_USER:-igor}"
+  local distro_user="${TERMUX_X11_DISTRO_USER:-}"
+
+  if [ -f "$distro_config_file" ]; then
+    # shellcheck source=/dev/null
+    . "$distro_config_file"
+    distro_alias="${TERMUX_X11_DISTRO_ALIAS:-$distro_alias}"
+    distro_user="${TERMUX_X11_DISTRO_USER:-$distro_user}"
+  fi
+
+  [ -n "$distro_user" ] || return 1
 
   proot-distro login --no-arch-warning --user "$distro_user" --shared-tmp "$distro_alias" -- \
     /bin/bash -lc 'pgrep -f "^xfce4-session( |$)|^xfce4-panel( |$)" >/dev/null 2>&1' \
@@ -1483,9 +1504,19 @@ stack_xfce_base_ready_in_distro() {
 }
 
 stack_xfce_wm_matches_in_distro() {
+  local distro_config_file="${HOME}/.config/termux-stack/debian-gui.env"
   local distro_alias="${TERMUX_X11_DISTRO_ALIAS:-debian-trixie-gui}"
-  local distro_user="${TERMUX_X11_DISTRO_USER:-igor}"
+  local distro_user="${TERMUX_X11_DISTRO_USER:-}"
   local expected_wm="${1:-$(stack_selected_xfce_wm)}"
+
+  if [ -f "$distro_config_file" ]; then
+    # shellcheck source=/dev/null
+    . "$distro_config_file"
+    distro_alias="${TERMUX_X11_DISTRO_ALIAS:-$distro_alias}"
+    distro_user="${TERMUX_X11_DISTRO_USER:-$distro_user}"
+  fi
+
+  [ -n "$distro_user" ] || return 1
 
   proot-distro login --no-arch-warning --user "$distro_user" --shared-tmp "$distro_alias" -- \
     /bin/bash -lc "pgrep -f '^${expected_wm}( |$)' >/dev/null 2>&1" \
@@ -1497,8 +1528,18 @@ stack_xfce_ready_in_distro() {
 }
 
 stack_xfce_wm_label_in_distro() {
+  local distro_config_file="${HOME}/.config/termux-stack/debian-gui.env"
   local distro_alias="${TERMUX_X11_DISTRO_ALIAS:-debian-trixie-gui}"
-  local distro_user="${TERMUX_X11_DISTRO_USER:-igor}"
+  local distro_user="${TERMUX_X11_DISTRO_USER:-}"
+
+  if [ -f "$distro_config_file" ]; then
+    # shellcheck source=/dev/null
+    . "$distro_config_file"
+    distro_alias="${TERMUX_X11_DISTRO_ALIAS:-$distro_alias}"
+    distro_user="${TERMUX_X11_DISTRO_USER:-$distro_user}"
+  fi
+
+  [ -n "$distro_user" ] || return 1
 
   proot-distro login --no-arch-warning --user "$distro_user" --shared-tmp "$distro_alias" -- /bin/bash -lc '
     if pgrep -f "^openbox( |$)" >/dev/null 2>&1; then
@@ -2293,6 +2334,12 @@ if [ -f "$COMMON_LIB" ]; then
   source "$COMMON_LIB"
 fi
 
+DISTRO_CONFIG_FILE="${HOME}/.config/termux-stack/debian-gui.env"
+if [ -f "$DISTRO_CONFIG_FILE" ]; then
+  # shellcheck source=/dev/null
+  source "$DISTRO_CONFIG_FILE"
+fi
+
 export DISPLAY="${TERMUX_STACK_DISPLAY:-:1}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/data/data/com.termux/files/usr/tmp}}"
 export DESKTOP_SESSION="xfce"
@@ -2302,7 +2349,7 @@ wm="${TERMUX_X11_WM:-xfwm4}"
 backend="${TERMUX_X11_DESKTOP_BACKEND:-termux}"
 
 DISTRO_ALIAS="${TERMUX_X11_DISTRO_ALIAS:-debian-trixie-gui}"
-DISTRO_USER="${TERMUX_X11_DISTRO_USER:-igor}"
+DISTRO_USER="${TERMUX_X11_DISTRO_USER:-}"
 DEBIAN_LAUNCHER="/home/${DISTRO_USER}/bin/start-xfce-termux-x11"
 export TERMUX_X11_DISTRO_ALIAS="$DISTRO_ALIAS"
 export TERMUX_X11_DISTRO_USER="$DISTRO_USER"
@@ -2357,10 +2404,16 @@ case "$backend" in
     printf 'Use: termux ou debian.\n' >&2
     exit 1
     ;;
-esac
+  esac
 
 export TERMUX_X11_WM="$wm"
 export TERMUX_X11_DESKTOP_BACKEND="$backend"
+
+if [ "$backend" = 'debian' ] && [ -z "$DISTRO_USER" ]; then
+  printf 'Usuário Debian não configurado para o backend debian.\n' >&2
+  printf 'Reexecute a instalação Debian GUI para gravar ~/.config/termux-stack/debian-gui.env.\n' >&2
+  exit 1
+fi
 
 xfce_success_message() {
   printf 'Sessão XFCE iniciada em %s com WM=%s.\n' "$1" "$wm"

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-EXPECTED_USER="igor"
+EXPECTED_USER=""
 ENV_FILE="${HOME}/.config/termux-stack/env.sh"
 SCRIPT_LOG="/tmp/configure-debian-user-$(date +%Y%m%d-%H%M%S).log"
 TOTAL_STEPS=10
@@ -389,13 +389,13 @@ EOF
 }
 
 write_openbox_launchers() {
-  cat > "$HOME/bin/openbox-terminal" <<'EOF'
+  cat > "$HOME/bin/openbox-terminal" <<EOF
 #!/usr/bin/env bash
 
 set -euo pipefail
 
 if command -v xfce4-terminal >/dev/null 2>&1; then
-  exec xfce4-terminal --disable-server --working-directory="/home/igor" --title='Debian Terminal'
+  exec xfce4-terminal --disable-server --working-directory="/home/${EXPECTED_USER}" --title='Debian Terminal'
 fi
 
 exec xterm
@@ -725,7 +725,7 @@ host_home="${TERMUX_HOST_HOME:-/data/data/com.termux/files/home}"
 applications_dir="${TERMUX_HOST_APPLICATIONS_DIR:-$host_home/.local/share/applications}"
 wrappers_dir="${TERMUX_HOST_DEBIAN_WRAPPERS_DIR:-$host_home/bin/debian-apps}"
 host_data_home="$host_home/.local/share"
-managed_prefix="debian-igor-"
+managed_prefix="debian-${EXPECTED_USER}-"
 
 safe_slug() {
   printf '%s' "$1" | tr -cs 'A-Za-z0-9._-' '-'
@@ -949,12 +949,37 @@ validate_user_environment() {
   /bin/bash -lc '. "$HOME/.config/termux-stack/env.sh"; printf "DISPLAY=%s\nXDG_RUNTIME_DIR=%s\nTERMUX_X11_WM=%s\nTERMUX_GUI_RENDERER=%s\nGALLIUM_DRIVER=%s\n" "$DISPLAY" "$XDG_RUNTIME_DIR" "$TERMUX_X11_WM" "$TERMUX_GUI_RENDERER" "$GALLIUM_DRIVER"'
 }
 
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --user)
+      shift
+      EXPECTED_USER="${1:-}"
+      shift || true
+      ;;
+    --help|-h)
+      printf 'Uso: %s [--user nome]\n' "$0"
+      exit 0
+      ;;
+    *)
+      fail \
+        'validação de argumentos' \
+        "Argumento não suportado: $1" \
+        'A configuração do ambiente do usuário Debian não pode continuar com parâmetros desconhecidos.' \
+        'Usar apenas --user ou --help.'
+      ;;
+  esac
+done
+
+if [ -z "$EXPECTED_USER" ]; then
+  EXPECTED_USER="$(id -un)"
+fi
+
 if [ "$(id -un)" != "$EXPECTED_USER" ]; then
   fail \
     'id -un' \
     "Este script precisa ser executado como ${EXPECTED_USER} dentro do Debian." \
     'A configuração do ambiente do usuário alvo não pode ser garantida.' \
-    'Executar via proot-distro login --user igor ...'
+    "Executar via proot-distro login --user ${EXPECTED_USER} ..."
 fi
 
 run_step 'Preparando diretórios de runtime e configuração' prepare_runtime_dirs

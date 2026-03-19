@@ -96,7 +96,7 @@ termux::require_host_command \
   'Não é possível resetar os apps do tablet a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 
 kill_termux_side_processes
 run_adb shell am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null

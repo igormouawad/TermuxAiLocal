@@ -2,7 +2,10 @@
 
 set -euo pipefail
 
-PROOT_USER="igor"
+PROOT_USER=""
+PROOT_SUDO_MODE=""
+PROOT_USER_PASSWORD_HASH=""
+USER_CONFIG=""
 SCRIPT_LOG="/tmp/configure-debian-root-$(date +%Y%m%d-%H%M%S).log"
 TOTAL_STEPS=9
 CURRENT_STEP=0
@@ -69,6 +72,14 @@ fail() {
   exit 1
 }
 
+cleanup() {
+  if [ -n "${USER_CONFIG:-}" ] && [ -f "$USER_CONFIG" ]; then
+    rm -f "$USER_CONFIG"
+  fi
+}
+
+trap cleanup EXIT
+
 run_step() {
   local label="$1"
   shift
@@ -128,6 +139,62 @@ EOF
   printf 'Hosts estáticos gravados em %s.\n' "$hosts_file"
 }
 
+validate_proot_user() {
+  local candidate="$1"
+
+  if ! printf '%s' "$candidate" | grep -Eq '^[a-z_][a-z0-9_-]{0,31}$'; then
+    fail \
+      'validação do nome do usuário Debian' \
+      "Nome inválido: ${candidate}" \
+      'O usuário Debian não pode ser criado com um identificador inseguro ou incompatível.' \
+      'Usar apenas letras minúsculas, números, _ ou -, começando por letra minúscula ou _.'
+  fi
+}
+
+validate_sudo_mode() {
+  case "${1:-}" in
+    password|nopasswd)
+      return 0
+      ;;
+    *)
+      fail \
+        'validação do modo sudo' \
+        "Modo inválido: ${1:-<vazio>}" \
+        'A política de sudo do usuário Debian ficou indefinida.' \
+        'Usar password ou nopasswd.'
+      ;;
+  esac
+}
+
+load_user_config() {
+  local config_path="$1"
+
+  if [ ! -f "$config_path" ]; then
+    fail \
+      "test -f \"$config_path\"" \
+      'Arquivo de configuração do usuário Debian não encontrado no rootfs.' \
+      'A criação do usuário não sabe qual credencial e política de sudo aplicar.' \
+      'Reenviar a configuração do usuário e repetir a instalação.'
+  fi
+
+  USER_CONFIG="$config_path"
+  # shellcheck source=/dev/null
+  . "$config_path"
+}
+
+validate_user_setup() {
+  validate_proot_user "$PROOT_USER"
+  validate_sudo_mode "$PROOT_SUDO_MODE"
+
+  if [ -z "$PROOT_USER_PASSWORD_HASH" ]; then
+    fail \
+      'validação do hash da senha do usuário Debian' \
+      'O hash da senha não foi informado.' \
+      'O usuário seria criado sem credencial válida.' \
+      'Reexecutar a coleta de dados do operador e repetir a configuração root.'
+  fi
+}
+
 configure_locale() {
   if grep -Eq '^[# ]*en_US.UTF-8 UTF-8' /etc/locale.gen; then
     sed -i -E 's/^[# ]*(en_US.UTF-8 UTF-8)$/\1/' /etc/locale.gen
@@ -139,6 +206,7 @@ configure_locale() {
 configure_user_and_groups() {
   local group_name
   local group_list='sudo,audio,video,render,input,plugdev,users'
+  local sudo_rule
   local env_keep_vars=(
     DISPLAY
     XDG_RUNTIME_DIR
@@ -172,11 +240,22 @@ configure_user_and_groups() {
     useradd -m -s /bin/bash -G "$group_list" "$PROOT_USER"
   fi
 
+  usermod -p "$PROOT_USER_PASSWORD_HASH" "$PROOT_USER"
+
   env_keep_joined="${env_keep_vars[*]}"
+
+  case "$PROOT_SUDO_MODE" in
+    nopasswd)
+      sudo_rule="${PROOT_USER} ALL=(ALL:ALL) NOPASSWD: ALL"
+      ;;
+    password)
+      sudo_rule="${PROOT_USER} ALL=(ALL:ALL) ALL"
+      ;;
+  esac
 
   cat > "/etc/sudoers.d/${PROOT_USER}" <<EOF
 Defaults:${PROOT_USER} env_keep += "${env_keep_joined}"
-${PROOT_USER} ALL=(ALL:ALL) NOPASSWD: ALL
+${sudo_rule}
 EOF
   chmod 440 "/etc/sudoers.d/${PROOT_USER}"
 
@@ -195,6 +274,7 @@ EOF
 
   printf 'Usuário alvo=%s\n' "$PROOT_USER"
   printf 'Grupos aplicados=%s\n' "$group_list"
+  printf 'Modo sudo=%s\n' "$PROOT_SUDO_MODE"
   printf 'Variáveis preservadas no sudo=%s\n' "$env_keep_joined"
 }
 
@@ -221,7 +301,16 @@ validate_user_configuration() {
   done
 
   sudo -l -U "$PROOT_USER"
-  su - "$PROOT_USER" -c 'sudo -n true'
+  case "$PROOT_SUDO_MODE" in
+    nopasswd)
+      grep -Fqx "${PROOT_USER} ALL=(ALL:ALL) NOPASSWD: ALL" "/etc/sudoers.d/${PROOT_USER}"
+      su - "$PROOT_USER" -c 'sudo -k >/dev/null 2>&1 || true; sudo -n true'
+      ;;
+    password)
+      grep -Fqx "${PROOT_USER} ALL=(ALL:ALL) ALL" "/etc/sudoers.d/${PROOT_USER}"
+      su - "$PROOT_USER" -c 'sudo -k >/dev/null 2>&1 || true; if sudo -n true >/dev/null 2>&1; then exit 1; fi'
+      ;;
+  esac
 }
 
 install_termux_desktop_sync_hook() {
@@ -243,8 +332,18 @@ while [ "$#" -gt 0 ]; do
       PROOT_USER="${1:-}"
       shift || true
       ;;
+    --user-config)
+      shift
+      USER_CONFIG="${1:-}"
+      shift || true
+      ;;
+    --sudo-mode)
+      shift
+      PROOT_SUDO_MODE="${1:-}"
+      shift || true
+      ;;
     --help|-h)
-      printf 'Uso: %s [--user nome]\n' "$0"
+      printf 'Uso: %s [--user nome] [--sudo-mode password|nopasswd] [--user-config /caminho/arquivo.env]\n' "$0"
       exit 0
       ;;
     *)
@@ -252,10 +351,16 @@ while [ "$#" -gt 0 ]; do
         'validação de argumentos' \
         "Argumento não suportado: $1" \
         'A configuração root não pode continuar com parâmetros desconhecidos.' \
-        'Usar apenas --user ou --help.'
+        'Usar apenas --user, --sudo-mode, --user-config ou --help.'
       ;;
   esac
 done
+
+if [ -n "$USER_CONFIG" ]; then
+  load_user_config "$USER_CONFIG"
+fi
+
+validate_user_setup
 
 if [ "$(id -u)" -ne 0 ]; then
   fail \
@@ -276,11 +381,12 @@ run_step \
   'Instalando pacotes base do Debian/X11/Openbox' \
   apt-get "${APT_NONINTERACTIVE_OPTS[@]}" install -y sudo dbus-x11 pulseaudio mesa-utils mesa-utils-extra x11-apps xauth ca-certificates locales xterm xfce4-session xfce4-panel xfwm4 xfce4-terminal xfce4-settings thunar openbox obconf glmark2 tint2 rofi lxappearance dunst wmctrl
 run_step 'Configurando locale do Debian' configure_locale
-run_step 'Configurando usuário alvo, grupos e sudoers' configure_user_and_groups
+run_step 'Configurando usuário alvo, senha, grupos e sudoers' configure_user_and_groups
 run_step 'Instalando hook de sync de atalhos Debian para o Openbox host' install_termux_desktop_sync_hook
-run_step 'Validando usuário alvo, grupos e sudo sem senha' validate_user_configuration
+run_step 'Validando usuário alvo, grupos e política de sudo' validate_user_configuration
 
 printf '\nConfiguração root Debian concluída.\n'
 printf 'Usuário alvo: %s\n' "$PROOT_USER"
+printf 'Modo sudo: %s\n' "$PROOT_SUDO_MODE"
 printf 'Pacotes GUI base instalados: sim\n'
 printf 'Log geral: %s\n' "$SCRIPT_LOG"

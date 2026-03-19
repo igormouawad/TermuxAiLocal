@@ -80,10 +80,14 @@ Use it only for:
 - screenshots
 
 ### Real shell inside the Termux app
+Device selection:
+- with exactly one `adb devices` target in state `device`, host wrappers autodetect it
+- with multiple targets, define `TERMUXAI_DEVICE_ID=SERIAL` or use `--device SERIAL` on `adb_termux_send_command.sh`
+
 Host wrapper:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
 ```
 
 Default mode:
@@ -112,7 +116,7 @@ run-gui-debian --label XEyes -- xeyes
 From the host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Non-Negotiable Rules
@@ -149,7 +153,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --deskt
 - Real Termux shell probe from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
 ```
 
 - Host-side X11 app launch:
@@ -161,7 +165,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -ti
 - Debian GUI app from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Canonical Natural Flow Mapping
@@ -176,10 +180,10 @@ Runtime order:
 1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 2. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 3. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 6. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-7. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+7. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Wrong branch for that same request:
 - `Daily-Flow/clean-full-workspace-flow.sh`
@@ -204,11 +208,11 @@ Natural requests such as `com o stack atual` or `apenas o necessario` mean:
 3. do not reset the whole ecosystem unless the probe justifies it
 
 For the concrete natural request `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical order is:
-1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 2. if step 1 already shows `DESKTOP=openbox`, do not reset and do not start again yet
 3. if step 1 shows `DESKTOP=inativo`, run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Wrong branch for that same request:
 - `ps -ef`
@@ -263,7 +267,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu 
 Launch Debian GUI app from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Success Signatures

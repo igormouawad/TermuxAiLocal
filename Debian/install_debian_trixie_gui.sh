@@ -3,13 +3,19 @@
 set -euo pipefail
 
 DISTRO_ALIAS="debian-trixie-gui"
-PROOT_USER="igor"
+PROOT_USER=""
+PROOT_SUDO_MODE=""
+PROOT_USER_PASSWORD_HASH=""
 RESET_DISTRO=0
 ROOT_SCRIPT_LOCAL="/data/local/tmp/configure_debian_trixie_root.sh"
-USER_SCRIPT_LOCAL="/data/local/tmp/configure_debian_trixie_user_igor.sh"
+USER_SCRIPT_LOCAL="/data/local/tmp/configure_debian_trixie_user.sh"
 GUI_LAUNCHER_SCRIPT_LOCAL="/data/local/tmp/run_gui_in_debian.sh"
 ROOT_SCRIPT_DISTRO="/root/configure_debian_trixie_root.sh"
-USER_SCRIPT_DISTRO="/usr/local/bin/configure_debian_trixie_user_igor.sh"
+USER_SCRIPT_DISTRO="/usr/local/bin/configure_debian_trixie_user.sh"
+USER_CONFIG_LOCAL=""
+USER_CONFIG_SOURCE=""
+USER_CONFIG_TERMUX_DEFAULT="${TMPDIR:-/data/data/com.termux/files/usr/tmp}/debian-user-setup.env"
+USER_CONFIG_DISTRO="/root/termux-debian-user-config.env"
 PROOT_DISTRO_CACHE="${PREFIX}/var/lib/proot-distro/dlcache"
 DEBIAN_ROOTFS_TARBALL="debian-trixie-aarch64-pd-v4.37.0.tar.xz"
 DEBIAN_ROOTFS_URL="https://easycli.sh/proot-distro/${DEBIAN_ROOTFS_TARBALL}"
@@ -20,7 +26,7 @@ LOG_DIR="${CACHE_DIR}/logs"
 mkdir -p "$HOME/bin" "$LOG_DIR"
 
 SCRIPT_LOG="${LOG_DIR}/install-debian-trixie-gui-$(date +%Y%m%d-%H%M%S).log"
-TOTAL_STEPS=11
+TOTAL_STEPS=12
 CURRENT_STEP=0
 LAST_STEP_LOG=""
 PKG_NONINTERACTIVE_OPTS=(
@@ -96,6 +102,14 @@ fail() {
 
   exit 1
 }
+
+cleanup() {
+  if [ -n "${USER_CONFIG_LOCAL:-}" ] && [ -f "$USER_CONFIG_LOCAL" ] && [ "$USER_CONFIG_LOCAL" != "$USER_CONFIG_SOURCE" ]; then
+    rm -f "$USER_CONFIG_LOCAL"
+  fi
+}
+
+trap cleanup EXIT
 
 run_step() {
   local label="$1"
@@ -253,6 +267,177 @@ prepare_termux_shell() {
   printf 'Log da instalação Debian=%s\n' "$SCRIPT_LOG"
 }
 
+validate_proot_user() {
+  local candidate="$1"
+
+  if ! printf '%s' "$candidate" | grep -Eq '^[a-z_][a-z0-9_-]{0,31}$'; then
+    fail \
+      'validação do nome do usuário Debian' \
+      "Nome inválido: ${candidate}" \
+      'O usuário Debian não pode ser criado com um identificador inseguro ou incompatível.' \
+      'Usar apenas letras minúsculas, números, _ ou -, começando por letra minúscula ou _.'
+  fi
+}
+
+validate_sudo_mode() {
+  case "${1:-}" in
+    password|nopasswd)
+      return 0
+      ;;
+    *)
+      fail \
+        'validação do modo sudo' \
+        "Modo inválido: ${1:-<vazio>}" \
+        'A política de sudo do usuário Debian ficou indefinida.' \
+        'Usar password ou nopasswd.'
+      ;;
+  esac
+}
+
+hash_password_from_stdin() {
+  if ! command -v openssl >/dev/null 2>&1; then
+    fail \
+      'command -v openssl' \
+      'openssl não está disponível no Termux.' \
+      'A senha do usuário Debian não pode ser convertida para um hash seguro.' \
+      'Instalar openssl-tool no Termux e repetir a instalação Debian.'
+  fi
+
+  openssl passwd -6 -stdin
+}
+
+load_user_config_file() {
+  local config_path="$1"
+
+  if [ ! -f "$config_path" ]; then
+    fail \
+      "test -f \"$config_path\"" \
+      'Arquivo de configuração do usuário Debian não encontrado.' \
+      'A instalação não sabe qual usuário, hash de senha e política de sudo usar.' \
+      'Gerar novamente o arquivo de configuração e repetir a instalação.'
+  fi
+
+  # shellcheck source=/dev/null
+  . "$config_path"
+
+  PROOT_USER="${PROOT_USER:-}"
+  PROOT_SUDO_MODE="${PROOT_SUDO_MODE:-}"
+  PROOT_USER_PASSWORD_HASH="${PROOT_USER_PASSWORD_HASH:-}"
+
+  validate_proot_user "$PROOT_USER"
+  validate_sudo_mode "$PROOT_SUDO_MODE"
+
+  if [ -z "$PROOT_USER_PASSWORD_HASH" ]; then
+    fail \
+      "source \"$config_path\"" \
+      'O arquivo de configuração do usuário Debian não contém o hash da senha.' \
+      'O usuário seria criado sem credencial válida.' \
+      'Regenerar a configuração do usuário antes de continuar.'
+  fi
+
+  USER_CONFIG_LOCAL="$config_path"
+}
+
+prompt_user_config_interactively() {
+  local username=""
+  local password_one=""
+  local password_two=""
+  local sudo_answer=""
+
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    fail \
+      'coleta interativa da configuração Debian' \
+      'A instalação precisa perguntar nome, senha e política de sudo, mas a shell atual não é interativa.' \
+      'O usuário Debian não pode ser definido com segurança neste contexto.' \
+      'Executar o payload manualmente no app Termux ou chamar o wrapper host-side interativo.'
+  fi
+
+  while :; do
+    printf 'Nome do usuário Debian: '
+    IFS= read -r username
+    if [ -z "$username" ]; then
+      printf 'O nome do usuário não pode ficar vazio.\n' >&2
+      continue
+    fi
+    if printf '%s' "$username" | grep -Eq '^[a-z_][a-z0-9_-]{0,31}$'; then
+      break
+    fi
+    printf 'Nome inválido. Use apenas letras minúsculas, números, _ ou -, começando por letra minúscula ou _.\n' >&2
+  done
+
+  while :; do
+    printf 'Senha do usuário Debian: '
+    IFS= read -r -s password_one
+    printf '\n'
+    printf 'Confirme a senha: '
+    IFS= read -r -s password_two
+    printf '\n'
+
+    if [ -z "$password_one" ]; then
+      printf 'A senha não pode ficar vazia.\n' >&2
+      continue
+    fi
+
+    if [ "$password_one" != "$password_two" ]; then
+      printf 'As senhas não conferem. Tente novamente.\n' >&2
+      continue
+    fi
+
+    break
+  done
+
+  while :; do
+    printf 'Sudo deve exigir senha? [S/n]: '
+    IFS= read -r sudo_answer
+    case "${sudo_answer:-S}" in
+      S|s|'')
+        PROOT_SUDO_MODE='password'
+        break
+        ;;
+      N|n)
+        PROOT_SUDO_MODE='nopasswd'
+        break
+        ;;
+      *)
+        printf 'Resposta inválida. Digite S para sudo com senha ou N para sudo sem senha.\n' >&2
+        ;;
+    esac
+  done
+
+  PROOT_USER="$username"
+  PROOT_USER_PASSWORD_HASH="$(printf '%s' "$password_one" | hash_password_from_stdin)"
+  unset password_one password_two sudo_answer username
+}
+
+write_user_config_file() {
+  local config_path="$1"
+
+  umask 077
+  : > "$config_path"
+  printf 'PROOT_USER=%q\n' "$PROOT_USER" >> "$config_path"
+  printf 'PROOT_SUDO_MODE=%q\n' "$PROOT_SUDO_MODE" >> "$config_path"
+  printf 'PROOT_USER_PASSWORD_HASH=%q\n' "$PROOT_USER_PASSWORD_HASH" >> "$config_path"
+  chmod 600 "$config_path"
+  USER_CONFIG_LOCAL="$config_path"
+}
+
+collect_user_setup() {
+  if [ -n "$USER_CONFIG_SOURCE" ]; then
+    load_user_config_file "$USER_CONFIG_SOURCE"
+    return 0
+  fi
+
+  if [ -n "$PROOT_USER" ] && [ -n "$PROOT_SUDO_MODE" ] && [ -n "$PROOT_USER_PASSWORD_HASH" ]; then
+    validate_proot_user "$PROOT_USER"
+    validate_sudo_mode "$PROOT_SUDO_MODE"
+    write_user_config_file "$USER_CONFIG_TERMUX_DEFAULT"
+    return 0
+  fi
+
+  prompt_user_config_interactively
+  write_user_config_file "$USER_CONFIG_TERMUX_DEFAULT"
+}
+
 remove_distro_if_requested() {
   local installed_rootfs_dir="${PREFIX}/var/lib/proot-distro/installed-rootfs/${DISTRO_ALIAS}"
 
@@ -283,24 +468,39 @@ install_distro_if_needed() {
 copy_payloads_into_distro() {
   proot-distro copy "$ROOT_SCRIPT_LOCAL" "${DISTRO_ALIAS}:${ROOT_SCRIPT_DISTRO}"
   proot-distro copy "$USER_SCRIPT_LOCAL" "${DISTRO_ALIAS}:${USER_SCRIPT_DISTRO}"
+  if [ -n "$USER_CONFIG_LOCAL" ]; then
+    proot-distro copy "$USER_CONFIG_LOCAL" "${DISTRO_ALIAS}:${USER_CONFIG_DISTRO}"
+  fi
   proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- chmod 755 "$ROOT_SCRIPT_DISTRO" "$USER_SCRIPT_DISTRO"
+  if [ -n "$USER_CONFIG_LOCAL" ]; then
+    proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- chmod 600 "$USER_CONFIG_DISTRO"
+  fi
 }
 
 configure_root_payload() {
-  root_command=(/bin/bash "$ROOT_SCRIPT_DISTRO" --user "$PROOT_USER")
+  root_command=(/bin/bash "$ROOT_SCRIPT_DISTRO" --user "$PROOT_USER" --user-config "$USER_CONFIG_DISTRO")
 
   proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- "${root_command[@]}"
 }
 
 configure_user_payload() {
-  proot-distro login --no-arch-warning --user "$PROOT_USER" --shared-tmp "$DISTRO_ALIAS" -- /bin/bash "$USER_SCRIPT_DISTRO"
+  proot-distro login --no-arch-warning --user "$PROOT_USER" --shared-tmp "$DISTRO_ALIAS" -- /bin/bash "$USER_SCRIPT_DISTRO" --user "$PROOT_USER"
 }
 
 install_termux_helpers() {
+  mkdir -p "$HOME/.config/termux-stack"
   install -m 755 "$GUI_LAUNCHER_SCRIPT_LOCAL" "$HOME/bin/run-gui-debian"
+
+  cat > "$HOME/.config/termux-stack/debian-gui.env" <<EOF
+export TERMUX_X11_DISTRO_ALIAS="${DISTRO_ALIAS}"
+export TERMUX_X11_DISTRO_USER="${PROOT_USER}"
+EOF
+  chmod 644 "$HOME/.config/termux-stack/debian-gui.env"
 
   cat > "$HOME/bin/login-debian-gui" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
+# shellcheck source=/dev/null
+[ -f "\$HOME/.config/termux-stack/debian-gui.env" ] && . "\$HOME/.config/termux-stack/debian-gui.env"
 exec proot-distro login --no-arch-warning --user ${PROOT_USER} --shared-tmp ${DISTRO_ALIAS}
 EOF
   chmod 755 "$HOME/bin/login-debian-gui"
@@ -311,9 +511,21 @@ validate_debian_user_ready() {
     /bin/bash -lc "id ${PROOT_USER} && sudo -l -U ${PROOT_USER}"
 
   proot-distro login --no-arch-warning --user "$PROOT_USER" --shared-tmp "$DISTRO_ALIAS" -- \
-    /bin/bash -lc '
+    env PROOT_SUDO_MODE="$PROOT_SUDO_MODE" /bin/bash -lc '
       id
-      sudo -n true
+      case "${PROOT_SUDO_MODE:-password}" in
+        nopasswd)
+          sudo -k >/dev/null 2>&1 || true
+          sudo -n true
+          ;;
+        password)
+          sudo -k >/dev/null 2>&1 || true
+          if sudo -n true >/dev/null 2>&1; then
+            printf "sudo aceitou sem senha quando deveria exigir senha.\n" >&2
+            exit 1
+          fi
+          ;;
+      esac
       test -f "$HOME/.config/termux-stack/env.sh"
       test -x "$HOME/bin/run-gui-termux"
       test -x "$HOME/bin/run-gui-termux-xfce"
@@ -328,6 +540,7 @@ print_summary() {
   printf '\nDebian Trixie preparado para apps GUI no Termux.\n'
   printf 'Alias do proot-distro: %s\n' "$DISTRO_ALIAS"
   printf 'Usuário Debian: %s\n' "$PROOT_USER"
+  printf 'Modo sudo: %s\n' "$PROOT_SUDO_MODE"
   printf 'Helpers instalados em: %s/bin\n' "$HOME"
   printf 'Log geral: %s\n' "$SCRIPT_LOG"
   printf 'Para abrir um shell Debian do usuário alvo: login-debian-gui\n'
@@ -347,8 +560,23 @@ while [ "$#" -gt 0 ]; do
       RESET_DISTRO=1
       shift
       ;;
+    --user)
+      shift
+      PROOT_USER="${1:-}"
+      shift || true
+      ;;
+    --sudo-mode)
+      shift
+      PROOT_SUDO_MODE="${1:-}"
+      shift || true
+      ;;
+    --user-config)
+      shift
+      USER_CONFIG_SOURCE="${1:-}"
+      shift || true
+      ;;
     --help|-h)
-      printf 'Uso: %s [--alias nome] [--reset-distro]\n' "$0"
+      printf 'Uso: %s [--alias nome] [--reset-distro] [--user nome] [--sudo-mode password|nopasswd] [--user-config /caminho/arquivo.env]\n' "$0"
       exit 0
       ;;
     *)
@@ -356,7 +584,7 @@ while [ "$#" -gt 0 ]; do
         'validação de argumentos' \
         "Argumento não suportado: $1" \
         'A instalação não pode continuar com parâmetros desconhecidos.' \
-        'Usar apenas --alias, --reset-distro ou --help.'
+        'Usar apenas --alias, --reset-distro, --user, --sudo-mode, --user-config ou --help.'
       ;;
   esac
 done
@@ -384,9 +612,10 @@ ensure_file "$GUI_LAUNCHER_SCRIPT_LOCAL"
 run_step 'Preparando shell do Termux para o provisionamento Debian' prepare_termux_shell
 run_step 'Atualizando índice de pacotes pkg' pkg update -y
 run_step 'Atualizando pacotes instalados do Termux' pkg upgrade -y "${PKG_NONINTERACTIVE_OPTS[@]}"
-run_step 'Instalando dependências Termux para proot-distro' pkg install -y "${PKG_NONINTERACTIVE_OPTS[@]}" proot-distro pulseaudio dbus
+run_step 'Instalando dependências Termux para proot-distro' pkg install -y "${PKG_NONINTERACTIVE_OPTS[@]}" proot-distro pulseaudio dbus openssl-tool
 run_step 'Resetando o Debian existente quando solicitado' remove_distro_if_requested
 run_step 'Instalando rootfs Debian base se necessário' install_distro_if_needed
+run_step 'Coletando usuário, senha e política de sudo do Debian' collect_user_setup
 run_step 'Copiando payloads internos para o Debian' copy_payloads_into_distro
 run_step 'Executando configuração root do Debian' configure_root_payload
 run_step 'Executando configuração do usuário Debian alvo' configure_user_payload

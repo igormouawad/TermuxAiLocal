@@ -306,7 +306,7 @@ termux::require_host_command \
   'Não é possível validar o dispositivo Android a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 
 write_report "device_id=${DEVICE_ID}"
 collect_device_metadata

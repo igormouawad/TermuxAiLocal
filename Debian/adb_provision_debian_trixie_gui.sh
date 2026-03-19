@@ -11,7 +11,7 @@ REMOTE_DIR="/data/local/tmp"
 PAYLOAD_FILES=(
   "install_debian_trixie_gui.sh"
   "configure_debian_trixie_root.sh"
-  "configure_debian_trixie_user_igor.sh"
+  "configure_debian_trixie_user.sh"
   "run_gui_in_debian.sh"
 )
 FORWARDED_ARGS=()
@@ -65,7 +65,7 @@ termux::require_host_command \
 
 bash "${PROJECT_ROOT}/ADB/adb_reset_termux_stack.sh" --focus termux >/dev/null
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 
 for file_name in "${PAYLOAD_FILES[@]}"; do
   if [ ! -f "${SCRIPT_DIR}/${file_name}" ]; then

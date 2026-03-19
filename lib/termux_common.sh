@@ -62,11 +62,32 @@ termux::resolve_single_device() {
     termux::fail \
       'adb devices' \
       "$device_list" \
-      'A seleção precisa do dispositivo não é confiável com múltiplos alvos conectados.' \
-      'Manter exatamente um dispositivo em estado device e executar novamente.'
+      'A seleção automática do dispositivo não é confiável com múltiplos alvos conectados.' \
+      'Executar `adb devices` e repetir com `TERMUXAI_DEVICE_ID=SERIAL`, ou informar `--device SERIAL` quando o helper suportar essa flag.'
   fi
 
   printf '%s\n' "$device_id"
+}
+
+termux::resolve_target_device() {
+  local preferred_device_id="${1:-}"
+
+  termux::require_host_command \
+    adb \
+    'Os wrappers host-side do workspace não conseguem orquestrar o dispositivo Android.' \
+    'Instalar Android Platform Tools no host e tentar novamente.'
+
+  if [ -n "$preferred_device_id" ]; then
+    printf '%s\n' "$preferred_device_id"
+    return 0
+  fi
+
+  if [ -n "${TERMUXAI_DEVICE_ID:-}" ]; then
+    printf '%s\n' "${TERMUXAI_DEVICE_ID}"
+    return 0
+  fi
+
+  termux::resolve_single_device
 }
 
 termux::run_with_timeout() {

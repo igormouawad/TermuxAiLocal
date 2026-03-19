@@ -26,10 +26,10 @@ name: TermuxAiLocal Workspace Rules
 - For that same request, do not use `file_glob_search` or any terminal tool before those two reads.
 - For natural minimal-repair requests that mention one X11 app and then `xeyes` in Debian, do not run host Linux discovery like `ps -ef`, `which xeyes`, or `sudo apt install`.
 - For that same request, the right sequence is:
-  1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+  1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
   2. if needed, `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
   3. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-  4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 - For that clean reinstall command-map answer, do not read `Install/adb_reinstall_termux_official.sh`, `Install/install_termux_repo_bootstrap.sh`, or `Install/install_termux_stack.sh`.
 - For that clean reinstall command-map answer, do not add script internals, cleanup details, mirror internals, or package lists.
 - In Continue Agent, for explicit ordered command lists, the first `Run` after required reads must be command 1 from the user list.

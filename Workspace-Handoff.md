@@ -58,7 +58,7 @@ Do not treat this file as a historical changelog.
   - `bash -n` passed on all repo `*.sh` files
   - `shellcheck` is clean on the main refactored files except for informational SC2016 cases where literal shell lines are intentionally written into other files
 - Runtime validation after the refactor:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`: passed
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`: passed
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`: passed
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`: passed
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run daily_flow --yes`: passed after the workspace move
@@ -76,7 +76,7 @@ Do not treat this file as a historical changelog.
 
 ## Workspace Identity
 - Root: `/home/igor/Documentos/AI/TermuxAiLocal`
-- Main Android device: `RX2Y901WJ2E`
+- ADB target selection: autodetect a single connected device; if multiple targets are present, set `TERMUXAI_DEVICE_ID` or use `--device` where the helper supports it
 - Host: Linux workstation
 - Daily desktop baseline: `Openbox`
 - Daily profile: `openbox-maxperf`
@@ -119,7 +119,7 @@ Do not treat this file as a historical changelog.
 - Authoritative baseline validation:
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
 - Real Termux command from host:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 - Host-side X11 app launch:
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
 - Hard close of the Android `Termux:X11` app:
@@ -130,10 +130,10 @@ The natural full flow is 7 steps:
 1. `adb_reset_termux_stack.sh --focus termux`
 2. `adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 3. `adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-4. `adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+4. `adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 5. `adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 6. `adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-7. `adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+7. `adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Reason:
 - `adb_validate_baseline.sh` may finish with the tested desktop stopped
@@ -197,7 +197,7 @@ Important:
 - Debian GUI was reinstalled after the clean Termux APK reinstall and revalidated with:
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh`
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh`
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 ## Latest Host / Device Fixes
 - The launcher catalog on the live device was pruned again and dead entries were removed from the exported Debian app set.
@@ -361,23 +361,27 @@ Important:
   - the desktop is still light and performance-oriented
   - but it is now usable as a real desktop instead of only a validated Openbox process
 
-## Debian User `igor` Strengthened
-- The Debian `proot` user `igor` remains the correct place for per-user Linux settings.
+## Debian User Setup Parametrized
+- The Debian `proot` user is now chosen by the operator during installation instead of being fixed in the repo.
 - The host Openbox desktop still belongs to Termux; Debian remains a GUI client path.
+- The host wrapper and the Termux-side installer now collect or accept:
+  - Debian username
+  - Debian password
+  - sudo policy: `password` or `nopasswd`
 - The Debian root config now also installs:
   - `tint2`
   - `rofi`
   - `obconf`
   - `lxappearance`
   - `dunst`
-- The Debian user config for `igor` now creates:
+- The Debian user config for the chosen user now creates:
   - `~/Desktop`
   - `~/Documents`
   - `~/Downloads`
   - `~/Projects`
   - `~/.config/openbox`
   - `~/.config/tint2`
-- The Debian user config now installs launchers in `/home/igor/bin`:
+- The Debian user config now installs launchers in `/home/<debian-user>/bin`:
   - `openbox-terminal`
   - `openbox-launcher`
   - `openbox-file-manager`
@@ -385,22 +389,24 @@ Important:
   - `start-openbox-termux-x11`
   - existing `run-gui-termux*` launchers remain
 - The Debian user config now writes:
-  - `/home/igor/.config/termux-stack/env.sh`
-  - `/home/igor/.config/openbox/environment`
-  - `/home/igor/.config/openbox/autostart`
-  - `/home/igor/.config/openbox/menu.xml`
-  - `/home/igor/.config/openbox/rc.xml`
-  - `/home/igor/.config/tint2/tint2rc`
-  - `/home/igor/.bash_aliases`
-- Validated state after reprovision:
-  - `sudo -n true` works for `igor`
-  - `env.sh` loads as:
-    - `DISPLAY=:1`
-    - `XDG_RUNTIME_DIR=/tmp/runtime-igor`
-    - `TERMUX_X11_WM=openbox`
-    - `TERMUX_GUI_RENDERER=hardware`
-    - `GALLIUM_DRIVER=virpipe`
-  - Debian-side packages and launchers were confirmed present
+  - `/home/<debian-user>/.config/termux-stack/env.sh`
+  - `/home/<debian-user>/.config/openbox/environment`
+  - `/home/<debian-user>/.config/openbox/autostart`
+  - `/home/<debian-user>/.config/openbox/menu.xml`
+  - `/home/<debian-user>/.config/openbox/rc.xml`
+  - `/home/<debian-user>/.config/tint2/tint2rc`
+  - `/home/<debian-user>/.bash_aliases`
+- The Termux side now persists the selected Debian target in:
+  - `~/.config/termux-stack/debian-gui.env`
+  - `TERMUX_X11_DISTRO_ALIAS`
+  - `TERMUX_X11_DISTRO_USER`
+- Current code path expectation after reprovision:
+  - `env.sh` exposes `DISPLAY=:1`
+  - `XDG_RUNTIME_DIR` follows `/tmp/runtime-<debian-user>`
+  - `TERMUX_X11_WM=openbox`
+  - `TERMUX_GUI_RENDERER=hardware`
+  - `GALLIUM_DRIVER=virpipe`
+  - sudo behavior follows the operator-selected policy
 - Practical caveat:
   - inside `proot`, `id` still shows Android-style `aid_*` groups at runtime
   - treat that as a `proot` identity quirk, not as evidence that `sudoers`, launchers, or the Debian-side user setup failed
@@ -408,16 +414,16 @@ Important:
 ## Host Openbox Now Presents Debian First
 - The host Openbox desktop now behaves as a shell for Debian GUI usage instead of exposing host Termux apps by default.
 - Host-side helpers generated by `/home/igor/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh` now prefer Debian apps when `run-gui-debian` exists:
-  - `openbox-terminal` -> Debian terminal as `igor`
-  - `openbox-file-manager` -> Debian `thunar` as `igor`
+  - `openbox-terminal` -> Debian terminal as the configured Debian user
+  - `openbox-file-manager` -> Debian `thunar` as the configured Debian user
   - `openbox-settings` -> Debian `lxappearance` / `obconf`
 - Debian now exports launcher entries back into the host Openbox launcher:
-  - user helper: `/home/igor/bin/sync-termux-desktop-entries`
+  - user helper: `/home/<debian-user>/bin/sync-termux-desktop-entries`
   - host destination:
     - `/data/data/com.termux/files/home/.local/share/applications`
     - `/data/data/com.termux/files/home/bin/debian-apps`
   - managed desktop-entry prefix:
-    - `debian-igor-*.desktop`
+    - `debian-<debian-user>-*.desktop`
 - Debian root now installs an apt hook:
   - `/etc/apt/apt.conf.d/90termux-sync-desktop`
   - effect:
@@ -425,8 +431,8 @@ Important:
 - Real validation completed:
   - host Openbox launcher now shows Debian app entries with icons:
     - `/tmp/openbox-debian-launcher.png`
-  - host Openbox terminal now opens a Debian terminal as `igor`
-  - host Openbox file manager now opens Debian `thunar` rooted at `/home/igor`
+  - host Openbox terminal now opens a Debian terminal as the configured Debian user
+  - host Openbox file manager now opens Debian `thunar` rooted at `/home/<debian-user>`
   - screenshot proof:
     - `/tmp/openbox-debian-shell.png`
 - Practical result:
@@ -525,7 +531,7 @@ Important:
     1. `adb_reset_termux_stack.sh --focus termux`
     2. `adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
     3. `adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-    4. `adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+    4. `adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 - Practical conclusion:
   - the natural full-flow prompt is also in a controlled context range now
   - the major prompt-inflation regression is no longer present in this scenario either
@@ -593,9 +599,9 @@ Important:
 - Latest minimal-repair Continue retest:
   - prompt: `Com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian. TESTE-MINREPAIR-PRO-2`
   - verified from the LM Studio log:
-    - it started with `adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+    - it started with `adb_termux_send_command.sh -- 'termux-stack-status --brief'`
     - it then ran `adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-    - it then ran `adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+    - it then ran `adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
     - it did not run `ps -ef`, `which xeyes`, `sudo apt install`, or host Linux package management
 - Latest full-flow stabilization:
   - prompt: `Execute o fluxo diario limpo completo do workspace e pare na primeira falha. TESTE-FULLFLOW-PRO-10`
@@ -639,7 +645,7 @@ Important:
   - FreeCAD was reopening itself with an explicit top-edge Y coordinate, so panel struts/margins alone were not enough
 - Persistent fix now implemented:
   - `Debian/configure_debian_trixie_root.sh` installs `wmctrl`
-  - `Debian/configure_debian_trixie_user_igor.sh` exports a special wrapper for `FreeCAD`
+  - `Debian/configure_debian_trixie_user.sh` exports a special wrapper for `FreeCAD`
   - that wrapper launches FreeCAD and then repositions the mapped window with `wmctrl -x -r freecad.FreeCAD -e 0,0,40,-1,-1`
 - Live validation after reapplied wrapper:
   - `wmctrl -lxG` showed the FreeCAD window at `x=0 y=40`

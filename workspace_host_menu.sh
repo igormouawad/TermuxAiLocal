@@ -28,6 +28,10 @@ Modos:
   --list        Lista os itens do menu com os comandos associados.
   --run ID      Executa um item diretamente pelo ACTION_ID ou numero.
   --yes         Pula a confirmacao interativa para --run.
+
+Selecao de device:
+  - por padrao, o menu autodetecta um unico alvo ADB em estado device
+  - com multiplos devices, exporte TERMUXAI_DEVICE_ID=SERIAL antes de executar
 EOF
 }
 
@@ -47,18 +51,7 @@ resolve_device_id() {
     return 0
   fi
 
-  if [[ -n "${TERMUXAI_DEVICE_ID:-}" ]]; then
-    DEVICE_ID="${TERMUXAI_DEVICE_ID}"
-    printf '%s\n' "$DEVICE_ID"
-    return 0
-  fi
-
-  termux::require_host_command \
-    adb \
-    'Os wrappers host-side do workspace nao conseguem orquestrar o dispositivo Android.' \
-    'Instalar Android Platform Tools no host e tentar novamente.'
-
-  DEVICE_ID="$(termux::resolve_single_device)"
+  DEVICE_ID="$(termux::resolve_target_device)"
   printf '%s\n' "$DEVICE_ID"
 }
 
@@ -234,10 +227,10 @@ register_actions() {
     "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
 bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
 bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
 bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
     "handler_daily_flow" \
     "1" \
     "Fluxo canonicamente completo do workspace em 7 passos."
@@ -300,7 +293,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --dev
     "stack_status" \
     "ADB / Termux" \
     "Ler termux-stack-status --brief" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'" \
     "handler_stack_status" \
     "0" \
     "Probe rapido do estado atual do stack no shell real do Termux."
@@ -318,7 +311,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --dev
     "debian_xeyes" \
     "ADB / Termux" \
     "Abrir xeyes no Debian via run-gui-debian" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
     "handler_debian_xeyes" \
     "0" \
     "Teste rapido do launcher Debian GUI ja provisionado."
@@ -418,7 +411,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --dev
     "Continue / VS Code" \
     "Copiar o menu do Termux para o dispositivo atual" \
     "adb push /home/igor/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh /data/local/tmp/termux_workspace_menu.sh
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'mkdir -p \"\$HOME/bin\" && install -m 755 /data/local/tmp/termux_workspace_menu.sh \"\$HOME/bin/termux-workspace-menu\"'" \
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'mkdir -p \"\$HOME/bin\" && install -m 755 /data/local/tmp/termux_workspace_menu.sh \"\$HOME/bin/termux-workspace-menu\"'" \
     "handler_deploy_termux_menu" \
     "0" \
     "Instala ou atualiza o helper termux-workspace-menu no Termux atual."

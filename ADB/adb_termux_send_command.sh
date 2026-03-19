@@ -964,7 +964,8 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --help|-h)
-      printf 'Uso: %s --device SERIAL [--expect texto] [--timeout N] [--force-ui] [--interactive-shell] [--quiet-output] -- comando\n' "$0"
+      printf 'Uso: %s [--device SERIAL] [--expect texto] [--timeout N] [--force-ui] [--interactive-shell] [--quiet-output] -- comando\n' "$0"
+      printf '  sem --device, o helper autodetecta um unico alvo ADB; com multiplos devices, use --device SERIAL ou TERMUXAI_DEVICE_ID=SERIAL.\n'
       printf '  --expect texto   pode ser repetido; qualquer ocorrência satisfaz a validação.\n'
       printf '  --timeout N      watchdog opcional do job síncrono run-as; sem ele, a espera fica explícita até o fim.\n'
       printf '  --force-ui       ignora run-as+spool e força o transporte legado por foco/UI.\n'
@@ -982,14 +983,6 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -z "$DEVICE_ID" ]; then
-  fail \
-    'validação de argumentos' \
-    'Parâmetro --device é obrigatório.' \
-    'O helper não sabe para qual tablet deve enviar o comando.' \
-    'Informar um DEVICE_ID válido obtido via adb devices.'
-fi
-
 if [ "$#" -eq 0 ]; then
   fail \
     'validação de argumentos' \
@@ -997,6 +990,8 @@ if [ "$#" -eq 0 ]; then
     'Não há conteúdo para executar no Termux.' \
     'Passar o comando após --.'
 fi
+
+DEVICE_ID="$(termux::resolve_target_device "$DEVICE_ID")"
 
 if [ "$#" -eq 1 ]; then
 COMMAND_TEXT="$1"

@@ -85,11 +85,11 @@ Exceptions that override the generic reading order above:
 28. Natural-language mapping matters: `com o stack atual` or `apenas o necessario` means minimal repair from current state, not reinstall.
 29. Natural-language mapping matters: `reinstalacao limpa completa do Termux` means the one-step host reinstall flow, not the daily flow.
 30. For a natural minimal-repair request such as `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical sequence is:
-   - first: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E -- 'termux-stack-status --brief'`
+   - first: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
    - if that probe already shows `DESKTOP=openbox`, do not reset and do not start again before the X11 step
    - if that probe shows `DESKTOP=inativo`, run only `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
    - then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-   - then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --device RX2Y901WJ2E --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+   - then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 31. Wrong minimal-repair pattern for this workspace:
    - `ps -ef`
    - `which xeyes`

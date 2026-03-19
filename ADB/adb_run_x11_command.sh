@@ -88,7 +88,7 @@ termux::require_host_command \
   'Não é possível orquestrar a execução no X11 a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-DEVICE_ID=$(termux::resolve_single_device)
+DEVICE_ID=$(termux::resolve_target_device)
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
