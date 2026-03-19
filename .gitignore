@@ -1,0 +1,31 @@
+# OS and editor artifacts
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+*.kate-swp
+*.tmp
+*.bak
+*.orig
+
+# Local editor/project state
+.idea/
+.vscode/
+.direnv/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local AI/session state
+/RESUME.txt
+/.continue/cache/
+/.continue/logs/
+/.continue/sessions/
+/.continue/tmp/
+
+# Generated workspace artifacts
+/ADB/reports/
+/Install/.cache/
