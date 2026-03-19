@@ -28,8 +28,10 @@ O projeto organiza um fluxo verificavel para provisionar, reinstalar, validar e 
 - dispositivo Android ARM64
 - apps `com.termux`, `com.termux.api` e `com.termux.x11`
 - foco em validacao real por saida de comando, sem assumir estado limpo
-- com um unico alvo em `adb devices`, os wrappers fazem autodeteccao
-- com multiplos alvos, selecione explicitamente com `TERMUXAI_DEVICE_ID=SERIAL`
+- `TERMUXAI_DEVICE_ID=SERIAL` continua sendo a selecao explicita preferencial quando voce quiser fixar um alvo
+- sem selecao explicita, os wrappers preferem o device conectado por USB
+- sem USB, os wrappers tentam um unico endpoint por rede/Wi-Fi
+- com ambiguidade, selecione explicitamente com `TERMUXAI_DEVICE_ID=SERIAL`
 
 ## Inicio rapido
 

@@ -81,8 +81,10 @@ Use it only for:
 
 ### Real shell inside the Termux app
 Device selection:
-- with exactly one `adb devices` target in state `device`, host wrappers autodetect it
-- with multiple targets, define `TERMUXAI_DEVICE_ID=SERIAL` or use `--device SERIAL` on `adb_termux_send_command.sh`
+- explicit `TERMUXAI_DEVICE_ID=SERIAL` or `--device SERIAL` still wins
+- without an explicit selection, host wrappers prefer a directly connected USB target
+- if USB is absent, host wrappers try a single network/Wi‑Fi target
+- ambiguous cases still fail and require `TERMUXAI_DEVICE_ID=SERIAL` or `--device SERIAL`
 
 Host wrapper:
 
@@ -160,6 +162,12 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 't
 
 ```bash
 bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
+```
+
+- Consolidate the approved Android freeform desktop layout:
+
+```bash
+bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh
 ```
 
 - Debian GUI app from host:

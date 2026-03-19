@@ -20,9 +20,17 @@ Do not treat this file as a historical changelog.
   - if a future Codex prompt still offers an old workspace, treat that as stale log/history noise first, not validated active state
 - Session closure state for this round:
   - consolidated backup created at:
-    - `/home/igor/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v6-consolidated-20260319-112100.tar.gz`
+    - `/home/igor/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz`
     - checksum:
-      - `/home/igor/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v6-consolidated-20260319-112100.tar.gz.sha256`
+      - `/home/igor/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz.sha256`
+  - backup naming for this workspace is now explicitly expected to include:
+    - Codex model: `gpt-5.4`
+    - reasoning mode: `xhigh`
+    - backup version tag: `v7` for this round
+    - ChatGPT login tier string: `chatgpt-pro` or `chatgpt-business` when that tier is actually validated
+  - current validated Codex login context for this round:
+    - `codex login status`: `Logged in using ChatGPT`
+    - validated local auth claim: `chatgpt_plan_type='pro'`
   - active configuration/state validation passed for:
     - `/home/igor/.codex/config.toml`
     - `/home/igor/.codex/rules/default.rules`
@@ -30,7 +38,8 @@ Do not treat this file as a historical changelog.
     - `/home/igor/.config/Code/User/globalStorage/storage.json`
     - `~/.codex/state_5.sqlite` logical thread state
   - the current Codex thread now resolves to `/home/igor/Documentos/AI/TermuxAiLocal`
-  - this workspace is not a Git repository, so this closure round was validated by path scans and state inspection instead of `git status`
+  - this workspace is a Git repository on branch `main`; the current closure round can be validated with `git status --short`
+  - the latest full backup captured the complete workspace tree, including the current dirty Git worktree and untracked helpers
   - residual references to the pre-`AI/` root may still exist in append-only historical logs such as `~/.codex/log/codex-tui.log` or old VS Code log directories; these are not active workspace-selection state
 - The latest pre-refactor backup after moving the workspace under `AI/` was created at:
   - `/home/igor/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v5-moved-20260319-102313.tar.gz`
@@ -76,12 +85,110 @@ Do not treat this file as a historical changelog.
 
 ## Workspace Identity
 - Root: `/home/igor/Documentos/AI/TermuxAiLocal`
-- ADB target selection: autodetect a single connected device; if multiple targets are present, set `TERMUXAI_DEVICE_ID` or use `--device` where the helper supports it
+- ADB target selection:
+  - explicit `TERMUXAI_DEVICE_ID` / `--device` still has precedence
+  - without an explicit selection, host wrappers now prefer a directly connected USB target
+  - if USB is absent, wrappers fall back to a single reachable network/Wi‑Fi target
+  - ambiguous multi-target states still fail and require explicit selection
 - Host: Linux workstation
 - Daily desktop baseline: `Openbox`
 - Daily profile: `openbox-maxperf`
 - Accepted 3D path: `VirGL plain` with `GALLIUM_DRIVER=virpipe`
 - Display baseline: `Termux:X11` on `DISPLAY=:1`
+- Preferred manual Android desktop layout: freeform trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+- Approved bounds on the current tablet (`2560x1600` landscape):
+  - `Termux`: `[32,96][1105,742]`
+  - `Terminus`: `[32,749][1105,1488]`
+  - `Termux:X11`: `[1129,96][2528,944]`
+- Canonical helper for that manual desktop layout:
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh`
+- Current validated behavior of that helper:
+  - after a cold Android reboot, the helper now reapplies the freeform layout after the Openbox/X11 session is ensured
+  - this avoids the post-boot regression where `Termux` or `Terminus` could be relaunched fullscreen and escape the approved desktop arrangement
+  - latest end-to-end reboot validation on the live tablet passed with this exact sequence:
+    - force-stop `com.termux.api`, `com.termux.x11`, `com.termux`, and `com.server.auditor.ssh.client`
+    - `adb_desktop_mode.sh off`
+    - full Android reboot
+    - wait for `sys.boot_completed=1` and `dev.bootcomplete=1`
+    - `adb_desktop_mode.sh on`
+    - `TERMUXAI_DEVICE_ID=RX2Y901WJ2E bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+- Current validated Android desktop-state continuity:
+  - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
+  - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows
+  - the last validated manual SSH target inside `Terminus` was `DESKTOP_LINUX_IGOR`
+  - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_freeform_desktop.sh --restart --focus ssh` on the USB target `RX2Y901WJ2E`
+  - latest restored task bounds on the live tablet:
+    - `Termux`: task `103` in `[32,96][1105,742]`
+    - `Termux:X11`: task `104` in `[1129,96][2528,944]`
+    - `Terminus`: task `105` in `[32,749][1105,1488]`
+  - latest validated final focus after freeform consolidation:
+    - `com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity`
+  - latest post-reboot restored task bounds on the live tablet:
+    - `Termux`: task `108` in `[32,96][1105,742]`
+    - `Termux:X11`: task `109` in `[1129,96][2528,944]`
+    - `Terminus`: task `110` in `[32,749][1105,1488]`
+- Current validated Samsung desktop mode findings:
+  - the device exposes a working `wm shell desktopmode` controller on the default display
+  - validated state source of truth:
+    - `adb shell wm shell desktopmode dump`
+  - validated mode switch:
+    - `adb shell wm shell desktopmode toggleDesktopWindowingInDefaultDisplay`
+  - when desktop mode is active, `desktopmode dump` shows:
+    - `inDesktopWindowing=true`
+    - a live `activeDesk` id for the current session
+  - when desktop mode is inactive, `desktopmode dump` shows:
+    - `inDesktopWindowing=false`
+    - `activeDesk=null`
+  - in desktop mode, resizable apps open in `FREEFORM` automatically even without explicit `--windowingMode 5`
+  - deterministic host-side opening into a desktop window is also validated with:
+    - `adb shell cmd activity start-activity --display 0 --windowingMode 5 -W -n PKG/ACT`
+  - validated window manipulation on this Samsung build:
+    - `adb shell cmd activity task resize TASK_ID LEFT TOP RIGHT BOTTOM`
+    - `adb shell wm shell desktopmode moveTaskOutOfDesk TASK_ID`
+    - `adb shell wm shell desktopmode moveTaskToDesk TASK_ID DESK_ID`
+  - `wm shell desktopmode canCreateDesk` and `getActivateDeskId` are not reliable on this build and returned `Not implemented` / invalid-command behavior during testing
+  - canonical helper added for this Samsung desktop mode:
+    - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh`
+  - validated helper actions:
+    - `status`
+    - `on`
+    - `off`
+    - `toggle`
+    - `open --package PACKAGE [--bounds 'L T R B']`
+    - `resize --package PACKAGE --bounds 'L T R B'`
+    - `focus --package PACKAGE`
+  - latest end-to-end validation of the helper:
+    - `off` switched to tablet mode with launcher focus
+    - `on` restored the active desk and the `Terminus` desktop window
+    - `open --package com.android.settings --bounds '150 120 1200 900'` opened `Configurações` as `FREEFORM`
+    - `resize --package com.android.settings --bounds '220 160 1280 980'` updated the real task bounds
+    - `focus --package com.server.auditor.ssh.client` returned focus to `TerminalActivity` without relaunching a different screen of the app
+  - latest direct USB revalidation on `RX2Y901WJ2E` confirmed:
+    - `status -> off -> on -> status` passed
+    - the current live session uses `activeDesk=100`, not `91`
+    - the desk id is session-specific and must not be hardcoded
+    - immediately after `desktop_mode_on`, the raw dump may transiently show `activeDesk=null` / `visibleTasks=[]`; a fresh `status` stabilizes to the real active desk and visible tasks
+  - a later cold-reboot revalidation on the same tablet session confirmed the same session-dependent behavior:
+    - after reboot, the active desk changed again to `7`
+    - the helper still converged correctly because it resolves the live desk id instead of relying on any fixed number
+- Current validated ADB Wi‑Fi recovery state:
+  - when USB is absent, the host can recover ADB Wi‑Fi by reading the Android `Wireless debugging` screen directly
+  - the Android screen exposes two different endpoints:
+    - `connect`: from the main `Wireless debugging` page
+    - `pair`: from `Pair device with pairing code`
+  - do not assume the `pair` port is usable for `adb connect`
+  - latest validated screen capture in this session showed:
+    - `connect`: `192.168.50.173:39575`
+    - `pair`: `192.168.50.173:33273`
+  - the host confirmed `192.168.50.173:39575` as `device` for model `SM-X736B`
+  - a later workstation validation confirmed the tablet simultaneously reachable by:
+    - USB: `RX2Y901WJ2E`
+    - Wi‑Fi: `192.168.50.173:39575`
+  - with both transports present, the host wrappers correctly auto-selected the USB target
+  - stale `offline` transports on old Wi‑Fi ports may accumulate and should be disconnected before continuing
+- Important scope boundary:
+  - keep `adb_reset_termux_stack.sh` and the baseline validation flow on the validated split-screen path
+  - use the freeform helper after the stack is already up when the operator wants the Android desktop-mode arrangement
 
 ## Current LM Studio State
 - LM Studio UI is installed from `LM-Studio-0.4.6-1-x64.AppImage`.
@@ -124,6 +231,10 @@ Do not treat this file as a historical changelog.
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
 - Hard close of the Android `Termux:X11` app:
   - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_stop_termux_x11.sh`
+- Samsung desktop mode helper:
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status`
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on`
+  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh open --package com.server.auditor.ssh.client`
 
 ## Clean Daily Flow
 The natural full flow is 7 steps:

@@ -326,13 +326,6 @@ done
 write_report 'android_package_audit=ok'
 
 bash "${PROJECT_ROOT}/adb_reset_termux_stack.sh" --focus x11 >/dev/null
-if ! termux::wait_for_package_process "$DEVICE_ID" 'com.termux.api' 10 >/dev/null; then
-  fail \
-    'validação do app Termux:API após reset' \
-    "$(run_adb shell ps -A -o NAME,ARGS | grep -F 'com.termux.api' || true)" \
-    'O reset terminou sem o processo do app Termux:API ativo, o que foge do estado limpo exigido pelo projeto.' \
-    'Restaurar o ecossistema Termux pelo helper de reset e repetir a validação.'
-fi
 if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 10; then
   fail \
     'subida da surface do Termux:X11' \
@@ -341,7 +334,6 @@ if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 
     'Reabrir o app Termux:X11 e repetir a operação.'
 fi
 write_report 'termux_stack_reset=ok'
-write_report 'termux_api_process=ok'
 write_report 'termux_x11_surface=ok'
 
 desktop_start_helper_name="$(termux::desktop_start_helper "$DESKTOP_PROFILE" 0)"

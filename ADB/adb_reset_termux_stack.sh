@@ -41,7 +41,13 @@ kill_termux_side_processes() {
 
 reboot_device_for_clean_state() {
   adb -s "$DEVICE_ID" reboot >/dev/null 2>&1 || true
-  adb -s "$DEVICE_ID" wait-for-device
+  if ! termux::wait_for_device_ready "$DEVICE_ID" 120; then
+    fail \
+      'espera pela volta do endpoint ADB após reinicialização do dispositivo' \
+      "O endpoint $DEVICE_ID não voltou ao estado device dentro do tempo esperado." \
+      'O reset não conseguiu retomar o controle ADB do dispositivo após o reboot.' \
+      'Se o fluxo estiver usando ADB por Wi-Fi, reconectar o endpoint atual e repetir o reset.'
+  fi
   if ! termux::wait_for_boot_completed "$DEVICE_ID" 180; then
     fail \
       'espera pelo boot completo após reinicialização do dispositivo' \
@@ -126,13 +132,13 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" "$FOCUS_APP"; then
   fail \
     'reabertura validada do ecossistema Termux' \
     "$(current_focus)" \
-    'O reset terminou sem conseguir restaurar o split-screen obrigatório nem confirmar o app Termux:API em execução.' \
-    'Reabrir Termux, Termux:X11 e Termux:API ou repetir o reset para restaurar o estado operacional do projeto.'
+    'O reset terminou sem conseguir restaurar o split-screen obrigatório de Termux + Termux:X11.' \
+    'Reabrir Termux e Termux:X11 ou repetir o reset para restaurar o estado operacional do projeto.'
 fi
 
 printf 'Ecossistema Termux reiniciado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Foco final solicitado: %s\n' "$FOCUS_APP"
 printf 'Layout final: Termux + Termux:X11 lado a lado\n'
-printf 'Termux:API: ativo\n'
+printf 'Termux:API: não faz parte do layout diário; a app só é aberta automaticamente no reinstall limpo.\n'
 printf 'Processos remanescentes após o reset: %s\n' "$(termux::termux_process_count "$DEVICE_ID")"
 printf '%s\n' "$(current_focus)"

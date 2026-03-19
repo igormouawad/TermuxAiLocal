@@ -21,8 +21,10 @@ Os scripts host-side resolvem essa raiz dinamicamente a partir do diretório do 
 
 Seleção de device ADB:
 
-- com exatamente um alvo em `adb devices`, os wrappers host-side autodetectam o device
-- com múltiplos alvos, defina `TERMUXAI_DEVICE_ID=SERIAL` ou use `--device SERIAL` nos helpers que expõem essa flag
+- com `TERMUXAI_DEVICE_ID` ou `--device SERIAL`, a escolha continua explícita e tem precedência total
+- sem seleção explícita, os wrappers host-side preferem o alvo ADB direto por USB quando ele existir
+- sem USB disponível, os wrappers tentam autodetectar um único alvo por rede/Wi‑Fi
+- em cenários ambíguos, como múltiplos alvos USB ou múltiplos alvos por rede, a execução falha e exige `TERMUXAI_DEVICE_ID=SERIAL` ou `--device SERIAL`
 
 Tudo que é referente à instalação fica dentro de `Install/`.
 
@@ -74,6 +76,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_configure_phantom_processes.sh`: leitura/aplicação do override recomendado para limitar menos o Android contra `phantom processes`.
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
 - `ADB/adb_start_desktop.sh`: subida host-side do desktop suportado.
+- `ADB/adb_consolidate_freeform_desktop.sh`: consolida o trio `Termux` + `Termux:X11` + cliente SSH em desktop mode/freeform, com layout reprodutível em janelas e opção de fechar/reabrir tudo.
 - `ADB/adb_run_x11_command.sh`: execução remota de apps e scripts no display X11 `:1`.
 - `ADB/adb_stop_termux_x11.sh`: encerra a app Android `Termux:X11` por `adb` sem resetar o ecossistema inteiro.
 - `ADB/adb_set_x11_resolution.sh`: aplicação host-side dos perfis de resolução do Termux:X11.
@@ -94,7 +97,8 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 `Install/adb_provision.sh`:
 
 - valida `adb`
-- autodetecta um único device ADB; com múltiplos alvos, exige seleção explícita via `TERMUXAI_DEVICE_ID` ou pelas flags suportadas pelo helper
+- prioriza o device conectado diretamente por USB; sem USB, tenta um único alvo por rede/Wi‑Fi
+- em cenários ambíguos, exige seleção explícita via `TERMUXAI_DEVICE_ID` ou pelas flags suportadas pelo helper
 - audita os apps Android obrigatórios no usuário principal Android suportado pelo ADB (`--user 0`)
 - transfere o payload `Install/install_termux_stack.sh` para `/data/local/tmp/install_termux_stack.sh`
 - aplica `chmod +x` no payload
@@ -104,7 +108,8 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 `Install/adb_reinstall_termux_official.sh`:
 
 - valida `adb`, `curl` e `python3` no host
-- autodetecta um único device ADB e exige ABI `arm64-v8a`; com múltiplos alvos, exige seleção explícita
+- prioriza o device conectado diretamente por USB; sem USB, tenta um único alvo por rede/Wi‑Fi
+- ainda exige ABI `arm64-v8a`; em cenários ambíguos, exige seleção explícita
 - resolve por GitHub API as releases oficiais mais recentes de `termux-app`, `termux-api` e `termux-x11`
 - com `--dry-run`, valida releases e downloads no host sem tocar a instalação atual do dispositivo
 - baixa apenas APKs oficiais do owner `termux`
@@ -150,6 +155,16 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - aplica perfis de resolução do Termux:X11 a partir do host
 - abre `Termux:X11` e `Termux` antes de disparar `set-x11-resolution`
 - aceita `performance`, `balanced`, `native`, `show` e `custom LARGURAxALTURA`
+
+`ADB/adb_consolidate_freeform_desktop.sh`:
+
+- abre `Termux`, `Termux:X11` e o cliente SSH escolhido diretamente em `windowingMode=freeform`
+- aplica por padrão o layout aprovado no tablet atual:
+  - `Termux` no topo esquerdo
+  - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) embaixo à esquerda
+  - `Termux:X11` à direita com altura ajustada ao conteúdo útil, sem sobra preta acima/abaixo no arranjo validado
+- com `--restart`, fecha esses três apps e recria o layout completo para teste de reabertura
+- se a sessão gráfica estiver inativa, sobe `Openbox` com o perfil pedido sem voltar ao fluxo de split-screen
 
 Observação importante sobre transporte host-side:
 

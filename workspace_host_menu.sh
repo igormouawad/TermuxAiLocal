@@ -142,6 +142,26 @@ handler_start_openbox() {
   handler_start_desktop_profile openbox
 }
 
+handler_consolidate_freeform_desktop() {
+  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --focus ssh
+}
+
+handler_restart_freeform_desktop() {
+  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --restart --focus ssh
+}
+
+handler_desktop_mode_status() {
+  run_workspace_script "ADB/adb_desktop_mode.sh" status
+}
+
+handler_desktop_mode_on() {
+  run_workspace_script "ADB/adb_desktop_mode.sh" on
+}
+
+handler_desktop_mode_off() {
+  run_workspace_script "ADB/adb_desktop_mode.sh" off
+}
+
 handler_start_xfce() {
   handler_start_desktop_profile xfce
 }
@@ -242,7 +262,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux" \
     "handler_reset_termux" \
     "1" \
-    "Restaura split-screen, relanca Termux:API e limpa residuos controlados."
+    "Restaura split-screen de Termux + Termux:X11 e limpa residuos controlados."
 
   add_action \
     "reset_x11" \
@@ -261,6 +281,51 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "handler_start_openbox" \
     "1" \
     "Sobe o desktop diario com VirGL e DISPLAY=:1."
+
+  add_action \
+    "freeform_consolidate" \
+    "ADB / Termux" \
+    "Consolidar desktop livre aprovado" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh" \
+    "handler_consolidate_freeform_desktop" \
+    "0" \
+    "Aplica o layout aprovado: Termux no topo esquerdo, Terminus embaixo e Termux:X11 à direita."
+
+  add_action \
+    "freeform_restart" \
+    "ADB / Termux" \
+    "Fechar e reconstruir desktop livre aprovado" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh" \
+    "handler_restart_freeform_desktop" \
+    "1" \
+    "Reconstrói o layout livre aprovado; use com cautela porque o cliente SSH Android pode não retomar a sessão sozinho."
+
+  add_action \
+    "desktop_mode_status" \
+    "ADB / Termux" \
+    "Inspecionar o desktop mode Samsung" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status" \
+    "handler_desktop_mode_status" \
+    "0" \
+    "Lê o estado real do wm shell desktopmode dump, desk ativo e foco atual."
+
+  add_action \
+    "desktop_mode_on" \
+    "ADB / Termux" \
+    "Ligar desktop mode Samsung" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on" \
+    "handler_desktop_mode_on" \
+    "0" \
+    "Ativa o desktop mode no display padrão de forma idempotente."
+
+  add_action \
+    "desktop_mode_off" \
+    "ADB / Termux" \
+    "Desligar desktop mode Samsung" \
+    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh off" \
+    "handler_desktop_mode_off" \
+    "0" \
+    "Sai do desktop mode e volta para o launcher/tablet mode."
 
   add_action \
     "start_xfce" \

@@ -103,8 +103,8 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O provisionamento terminou sem conseguir restaurar o split-screen obrigatório nem confirmar o app Termux:API em execução.' \
-    'Reabrir Termux, Termux:X11 e Termux:API ou repetir o provisionamento.'
+    'O provisionamento terminou sem conseguir restaurar o split-screen obrigatório de Termux + Termux:X11.' \
+    'Reabrir Termux e Termux:X11 ou repetir o provisionamento.'
 fi
 
 printf 'Provisionamento concluído no host.\n'
@@ -114,4 +114,4 @@ printf 'Bootstrap enviado para: %s\n' "$BOOTSTRAP_TARGET"
 printf 'Menu Termux enviado para: %s\n' "$TERMUX_MENU_TARGET"
 printf 'Execute manualmente no app Termux:\n'
 printf 'bash /data/local/tmp/install_termux_repo_bootstrap.sh\n'
-printf 'Após instalação, atualização ou mudanças relevantes, reinicie Termux, Termux:X11 e Termux:API.\n'
+printf 'Após instalação, atualização ou mudanças relevantes, reinicie Termux e Termux:X11.\n'

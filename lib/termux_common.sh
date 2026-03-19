@@ -36,37 +36,88 @@ termux::require_host_command() {
   fi
 }
 
-termux::resolve_single_device() {
+termux::adb_device_list() {
   local device_list
-  local device_count
-  local device_id
 
-  device_list=$(adb devices 2>&1) || termux::fail \
-    'adb devices' \
+  device_list=$(adb devices -l 2>&1) || termux::fail \
+    'adb devices -l' \
     "$device_list" \
     'Não foi possível consultar dispositivos ADB.' \
     'Verificar cabo, autorização USB e serviço ADB.'
 
-  device_count=$(printf '%s\n' "$device_list" | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }')
-  device_id=$(printf '%s\n' "$device_list" | awk 'NR > 1 && $2 == "device" { print $1; exit }')
+  printf '%s\n' "$device_list"
+}
 
-  if [ -z "$device_id" ]; then
+termux::resolve_single_device() {
+  local device_list
+  local usb_count
+  local usb_id
+  local network_count
+  local network_id
+  local device_count
+
+  device_list="$(termux::adb_device_list)"
+
+  usb_count=$(
+    printf '%s\n' "$device_list" \
+      | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { count++ } END { print count + 0 }'
+  )
+  usb_id=$(
+    printf '%s\n' "$device_list" \
+      | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { print $1; exit }'
+  )
+  network_count=$(
+    printf '%s\n' "$device_list" \
+      | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { count++ } END { print count + 0 }'
+  )
+  network_id=$(
+    printf '%s\n' "$device_list" \
+      | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { print $1; exit }'
+  )
+  device_count=$(
+    printf '%s\n' "$device_list" \
+      | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }'
+  )
+
+  if [ "$usb_count" -eq 1 ]; then
+    printf '%s\n' "$usb_id"
+    return 0
+  fi
+
+  if [ "$usb_count" -gt 1 ]; then
     termux::fail \
-      'adb devices' \
+      'adb devices -l' \
+      "$device_list" \
+      'Há múltiplos alvos ADB diretos/USB em estado device; a escolha automática não é segura.' \
+      'Desconectar os alvos extras ou repetir com `TERMUXAI_DEVICE_ID=SERIAL` / `--device SERIAL`.'
+  fi
+
+  if [ "$network_count" -eq 1 ]; then
+    printf '%s\n' "$network_id"
+    return 0
+  fi
+
+  if [ "$network_count" -gt 1 ]; then
+    termux::fail \
+      'adb devices -l' \
+      "$device_list" \
+      'Não há USB disponível e existem múltiplos alvos ADB via rede em estado device; a escolha automática não é segura.' \
+      'Desconectar os alvos extras ou repetir com `TERMUXAI_DEVICE_ID=SERIAL` / `--device SERIAL`.'
+  fi
+
+  if [ "$device_count" -eq 0 ]; then
+    termux::fail \
+      'adb devices -l' \
       "$device_list" \
       'Nenhum dispositivo em estado device foi encontrado.' \
-      'Conectar e autorizar exatamente um dispositivo antes de prosseguir.'
+      'Conectar via USB ou reconectar o endpoint ADB por Wi‑Fi antes de prosseguir.'
   fi
 
-  if [ "$device_count" -ne 1 ]; then
-    termux::fail \
-      'adb devices' \
-      "$device_list" \
-      'A seleção automática do dispositivo não é confiável com múltiplos alvos conectados.' \
-      'Executar `adb devices` e repetir com `TERMUXAI_DEVICE_ID=SERIAL`, ou informar `--device SERIAL` quando o helper suportar essa flag.'
-  fi
-
-  printf '%s\n' "$device_id"
+  termux::fail \
+    'adb devices -l' \
+    "$device_list" \
+    'Os alvos ADB presentes não puderam ser classificados de forma confiável em USB ou rede.' \
+    'Executar `adb devices -l` manualmente e repetir com `TERMUXAI_DEVICE_ID=SERIAL` / `--device SERIAL`.'
 }
 
 termux::resolve_target_device() {
@@ -329,15 +380,9 @@ termux::ensure_termux_workspace_ready() {
   local device_id="$1"
   local focus_target="${2:-termux}"
 
-  if ! termux::ensure_termux_api_running "$device_id" 12; then
-    return 1
-  fi
-
   if ! termux::open_termux_split_pair "$device_id" "$focus_target"; then
     return 1
   fi
-
-  termux::wait_for_package_process "$device_id" 'com.termux.api' 5 >/dev/null
 }
 
 termux::open_termux_split_pair() {
@@ -547,6 +592,30 @@ termux::wait_for_boot_completed() {
       if [ "$boot_completed" = '1' ] && { [ -z "$dev_bootcomplete" ] || [ "$dev_bootcomplete" = '1' ]; }; then
         return 0
       fi
+    fi
+
+    if [ "$(date +%s)" -ge "$deadline_seconds" ]; then
+      break
+    fi
+
+    sleep 2
+  done
+
+  return 1
+}
+
+termux::wait_for_device_ready() {
+  local device_id="$1"
+  local timeout_seconds="${2:-120}"
+  local deadline_seconds
+  local device_state
+
+  deadline_seconds=$(( $(date +%s) + timeout_seconds ))
+
+  while :; do
+    device_state="$(adb -s "$device_id" get-state 2>/dev/null | tr -d '\r' || true)"
+    if [ "$device_state" = 'device' ]; then
+      return 0
     fi
 
     if [ "$(date +%s)" -ge "$deadline_seconds" ]; then

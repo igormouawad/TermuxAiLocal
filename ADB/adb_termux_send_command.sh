@@ -965,7 +965,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --help|-h)
       printf 'Uso: %s [--device SERIAL] [--expect texto] [--timeout N] [--force-ui] [--interactive-shell] [--quiet-output] -- comando\n' "$0"
-      printf '  sem --device, o helper autodetecta um unico alvo ADB; com multiplos devices, use --device SERIAL ou TERMUXAI_DEVICE_ID=SERIAL.\n'
+      printf '  sem --device, o helper prefere USB quando houver um alvo direto conectado; sem USB, tenta um unico alvo por rede. Em casos ambiguos, use --device SERIAL ou TERMUXAI_DEVICE_ID=SERIAL.\n'
       printf '  --expect texto   pode ser repetido; qualquer ocorrência satisfaz a validação.\n'
       printf '  --timeout N      watchdog opcional do job síncrono run-as; sem ele, a espera fica explícita até o fim.\n'
       printf '  --force-ui       ignora run-as+spool e força o transporte legado por foco/UI.\n'

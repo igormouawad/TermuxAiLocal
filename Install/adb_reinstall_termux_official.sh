@@ -357,7 +357,14 @@ reboot_if_residual_processes_remain() {
 
   log_step 'Processos residuais sobreviveram ao uninstall; reiniciando o dispositivo para concluir a limpeza.'
   adb -s "$DEVICE_ID" reboot >/dev/null 2>&1 || true
-  adb wait-for-device >/dev/null 2>&1 || true
+
+  if ! termux::wait_for_device_ready "$DEVICE_ID" 180; then
+    fail \
+      "espera pela volta do endpoint ADB $DEVICE_ID após reboot automático" \
+      'O endpoint ADB não voltou ao estado device dentro do tempo esperado.' \
+      'A reinstalação limpa ficou sem canal ADB para continuar após a limpeza por reboot.' \
+      'Se o fluxo estiver usando Wireless debugging, reconectar o endpoint atual e repetir a reinstalação.'
+  fi
 
   if ! termux::wait_for_boot_completed "$DEVICE_ID" 240; then
     fail \
