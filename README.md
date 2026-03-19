@@ -38,21 +38,21 @@ O projeto organiza um fluxo verificavel para provisionar, reinstalar, validar e 
 Provisionamento inicial:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh
+bash ~/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh
 ```
 
 Fluxo diario validado:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
 ```
 
 Reinstalacao limpa canonica:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
+bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 ```
 
 ## Principios do workspace

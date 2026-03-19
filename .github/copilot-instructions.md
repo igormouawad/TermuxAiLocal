@@ -6,7 +6,7 @@
 - O alvo principal do projeto e das pesquisas é melhorar estabilidade, performance e especialmente o caminho 3D no ambiente Termux/Termux:X11.
 
 ## Operational Baseline
-- Antes de qualquer fluxo novo, executar `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`.
+- Antes de qualquer fluxo novo, executar `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`.
 - Antes de digitar qualquer comando no tablet, confirmar por ADB qual app está focado.
 - Se qualquer fluxo falhar, resetar completamente `com.termux`, `com.termux.x11` e `com.termux.api`, reabrir os apps e só então continuar.
 

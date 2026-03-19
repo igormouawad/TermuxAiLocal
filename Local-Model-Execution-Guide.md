@@ -13,7 +13,7 @@ For command-map answers, the canonical commands written in this file are already
 
 ## Critical Continue Priorities
 - For a natural Continue request like `fluxo diario limpo completo do workspace`, first read `Workspace-Handoff.md`, then read this file, and only then emit the first terminal tool call.
-- For that same full-flow request, the first terminal tool call must be `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`.
+- For that same full-flow request, the first terminal tool call must be `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`.
 - For that same full-flow request, do not start with `file_glob_search`, repo-shortcut discovery, or invented paths such as `Daily-Flow/clean-full-workspace-flow.sh`.
 - For a short Continue smoke test on an already-provisioned stack, read only `Workspace-Handoff.md` and this file after `AGENTS.md` is already applied.
 - For a short Continue command-map answer limited to the clean reinstall flow, read only this file after `AGENTS.md` is already applied.
@@ -21,9 +21,9 @@ For command-map answers, the canonical commands written in this file are already
 - For that same short Continue clean reinstall command-map answer, considering `read_file` is already the wrong branch; answer directly instead.
 - For a clean LM Studio / Continue reinstall, or for the first clean Continue Agent behavior test after such a reinstall, verify the local Continue extension patch before any Continue behavior test.
 - Canonical check command:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`
 - If that check is not already patched, apply:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
 - After applying that patch, reload VS Code before the next Continue test.
 - For `fluxo diario limpo completo`, execute the full canonical 7-step flow, not the shorter 3-step smoke test.
 - For that full-flow request, do not invent a shortcut script path such as `Daily-Flow/clean-full-workspace-flow.sh`; emit the 7 canonical absolute commands directly.
@@ -89,7 +89,7 @@ Device selection:
 Host wrapper:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
 ```
 
 Default mode:
@@ -105,7 +105,7 @@ Reserve `--interactive-shell` for:
 Host wrapper:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
 ```
 
 ### Debian GUI client context
@@ -118,7 +118,7 @@ run-gui-debian --label XEyes -- xeyes
 From the host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Non-Negotiable Rules
@@ -137,43 +137,43 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
 - Clean reset:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 ```
 
 - Start validated desktop:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
 ```
 
 - Authoritative baseline validation:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
 ```
 
 - Real Termux shell probe from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
 ```
 
 - Host-side X11 app launch:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
 ```
 
 - Consolidate the approved Android freeform desktop layout:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh
 ```
 
 - Debian GUI app from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Canonical Natural Flow Mapping
@@ -181,17 +181,17 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
 ### Full clean flow
 Natural requests such as `fluxo diario limpo completo` mean this exact 7-step order:
 Preparation in Continue Agent:
-1. `Continue read /home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md`
-2. `Continue read /home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
+1. `Continue read ~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md`
+2. `Continue read ~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
 
 Runtime order:
-1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
-2. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
-3. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
-4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
-5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
-6. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-7. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+1. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+2. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+3. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
+4. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
+5. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+6. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
+7. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Wrong branch for that same request:
 - `Daily-Flow/clean-full-workspace-flow.sh`
@@ -205,9 +205,9 @@ Reason:
 
 ### Short smoke test
 Natural requests such as `smoke test canonico` mean this exact 3-step order:
-1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
-2. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
-3. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
+1. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+2. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+3. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
 
 ### Minimal repair
 Natural requests such as `com o stack atual` or `apenas o necessario` mean:
@@ -216,11 +216,11 @@ Natural requests such as `com o stack atual` or `apenas o necessario` mean:
 3. do not reset the whole ecosystem unless the probe justifies it
 
 For the concrete natural request `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical order is:
-1. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
+1. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
 2. if step 1 already shows `DESKTOP=openbox`, do not reset and do not start again yet
-3. if step 1 shows `DESKTOP=inativo`, run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
-4. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-5. `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+3. if step 1 shows `DESKTOP=inativo`, run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+4. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
+5. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 Wrong branch for that same request:
 - `ps -ef`
@@ -233,7 +233,7 @@ Wrong branch for that same request:
 The canonical clean reinstall answer is exactly this one host command:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
+bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 ```
 
 What the helper does after reinstalling the APKs:
@@ -256,26 +256,26 @@ For this answer:
 Provision payloads from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh
+bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh
 ```
 
 Install from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh
+bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh
 ```
 
 Restart the Termux ecosystem after Debian install:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
 ```
 
 Launch Debian GUI app from host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 ```
 
 ## Success Signatures

@@ -20,13 +20,13 @@ FORCE_FREEFORM=1
 usage() {
   cat <<'EOF'
 Uso:
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh off
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh toggle
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh open --package PACKAGE [--bounds 'L T R B']
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh resize --package PACKAGE --bounds 'L T R B'
-  bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh focus --package PACKAGE
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh off
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh toggle
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh open --package PACKAGE [--bounds 'L T R B']
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh resize --package PACKAGE --bounds 'L T R B'
+  bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh focus --package PACKAGE
 
 Acoes:
   status   mostra o estado atual do desktop mode Samsung e o foco atual.

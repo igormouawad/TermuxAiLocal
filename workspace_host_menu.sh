@@ -235,7 +235,7 @@ register_actions() {
     "smoke_openbox" \
     "Fluxos canonicos" \
     "Smoke test canonico do Openbox" \
-    $'bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux\nbash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox\nbash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report' \
+    $'bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux\nbash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox\nbash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report' \
     "handler_smoke_openbox" \
     "1" \
     "Fluxo curto e reprodutivel para validar reset, desktop e baseline."
@@ -244,13 +244,13 @@ register_actions() {
     "daily_flow" \
     "Fluxos canonicos" \
     "Fluxo diario limpo completo" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
     "handler_daily_flow" \
     "1" \
     "Fluxo canonicamente completo do workspace em 7 passos."
@@ -259,7 +259,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "reset_termux" \
     "ADB / Termux" \
     "Resetar ecossistema com foco final no Termux" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux" \
     "handler_reset_termux" \
     "1" \
     "Restaura split-screen de Termux + Termux:X11 e limpa residuos controlados."
@@ -268,7 +268,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "reset_x11" \
     "ADB / Termux" \
     "Resetar ecossistema com foco final no Termux:X11" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus x11" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus x11" \
     "handler_reset_x11" \
     "1" \
     "Mesmo reset canonico, mas deixando o foco final no Termux:X11."
@@ -277,7 +277,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "start_openbox" \
     "ADB / Termux" \
     "Subir desktop Openbox validado" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox" \
     "handler_start_openbox" \
     "1" \
     "Sobe o desktop diario com VirGL e DISPLAY=:1."
@@ -286,7 +286,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "freeform_consolidate" \
     "ADB / Termux" \
     "Consolidar desktop livre aprovado" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh" \
     "handler_consolidate_freeform_desktop" \
     "0" \
     "Aplica o layout aprovado: Termux no topo esquerdo, Terminus embaixo e Termux:X11 à direita."
@@ -295,7 +295,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "freeform_restart" \
     "ADB / Termux" \
     "Fechar e reconstruir desktop livre aprovado" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh" \
     "handler_restart_freeform_desktop" \
     "1" \
     "Reconstrói o layout livre aprovado; use com cautela porque o cliente SSH Android pode não retomar a sessão sozinho."
@@ -304,7 +304,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "desktop_mode_status" \
     "ADB / Termux" \
     "Inspecionar o desktop mode Samsung" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status" \
     "handler_desktop_mode_status" \
     "0" \
     "Lê o estado real do wm shell desktopmode dump, desk ativo e foco atual."
@@ -313,7 +313,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "desktop_mode_on" \
     "ADB / Termux" \
     "Ligar desktop mode Samsung" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on" \
     "handler_desktop_mode_on" \
     "0" \
     "Ativa o desktop mode no display padrão de forma idempotente."
@@ -322,7 +322,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "desktop_mode_off" \
     "ADB / Termux" \
     "Desligar desktop mode Samsung" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh off" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh off" \
     "handler_desktop_mode_off" \
     "0" \
     "Sai do desktop mode e volta para o launcher/tablet mode."
@@ -331,7 +331,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "start_xfce" \
     "ADB / Termux" \
     "Subir desktop XFCE validado" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf xfce" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf xfce" \
     "handler_start_xfce" \
     "1" \
     "Mantem o mesmo perfil base, mas sobe XFCE."
@@ -340,7 +340,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "validate_openbox" \
     "ADB / Termux" \
     "Validar baseline Openbox com relatorio" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report" \
     "handler_validate_openbox" \
     "1" \
     "Executa a validacao autoritativa e grava artefatos em ADB/reports."
@@ -349,7 +349,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "validate_xfce" \
     "ADB / Termux" \
     "Validar baseline XFCE com relatorio" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --profile=openbox-maxperf --with-gpu --report" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --profile=openbox-maxperf --with-gpu --report" \
     "handler_validate_xfce" \
     "1" \
     "Executa a validacao autoritativa do XFCE."
@@ -358,7 +358,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "stack_status" \
     "ADB / Termux" \
     "Ler termux-stack-status --brief" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'" \
     "handler_stack_status" \
     "0" \
     "Probe rapido do estado atual do stack no shell real do Termux."
@@ -367,7 +367,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "x11_demo" \
     "ADB / Termux" \
     "Abrir um aterm leve no X11" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'" \
     "handler_x11_demo" \
     "0" \
     "Teste leve de lancamento no display :1."
@@ -376,7 +376,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "debian_xeyes" \
     "ADB / Termux" \
     "Abrir xeyes no Debian via run-gui-debian" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'" \
     "handler_debian_xeyes" \
     "0" \
     "Teste rapido do launcher Debian GUI ja provisionado."
@@ -385,7 +385,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "resolution_show" \
     "ADB / Termux" \
     "Mostrar resolucao atual do Termux:X11" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh show" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh show" \
     "handler_resolution_show" \
     "0" \
     "Le as preferencias reais do Termux:X11."
@@ -394,7 +394,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "resolution_balanced" \
     "ADB / Termux" \
     "Aplicar perfil de resolucao balanced" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh balanced" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh balanced" \
     "handler_resolution_balanced" \
     "1" \
     "Reaplica a resolucao diaria cheia."
@@ -403,7 +403,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "resolution_performance" \
     "ADB / Termux" \
     "Aplicar perfil de resolucao performance" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance" \
     "handler_resolution_performance" \
     "1" \
     "Reaplica 1280x720 para reduzir fill-rate."
@@ -412,7 +412,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "phantom_processes" \
     "ADB / Termux" \
     "Aplicar override de phantom processes" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_configure_phantom_processes.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_configure_phantom_processes.sh" \
     "handler_phantom_config" \
     "1" \
     "Aplica o override recomendado para reduzir limitacao agressiva do Android."
@@ -421,7 +421,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "provision_termux" \
     "Instalacao e payloads" \
     "Enviar payload principal e bootstrap para o dispositivo" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh" \
     "handler_provision_termux" \
     "1" \
     "Prepara o device e para no bootstrap manual dentro do app Termux."
@@ -430,7 +430,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "reinstall_termux" \
     "Instalacao e payloads" \
     "Reinstalacao limpa completa dos 3 APKs Termux" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh" \
     "handler_reinstall_termux" \
     "1" \
     "Fluxo canonico de reinstall com bootstrap automatico apos abrir Termux:API e Termux."
@@ -439,7 +439,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "debian_provision" \
     "Instalacao e payloads" \
     "Provisionar payloads Debian GUI no device" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh" \
     "handler_debian_provision" \
     "1" \
     "Envia payloads Debian GUI e imprime o fluxo host-side/manual correspondente."
@@ -448,7 +448,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "debian_install" \
     "Instalacao e payloads" \
     "Instalar Debian GUI a partir do host" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh" \
     "handler_debian_install" \
     "1" \
     "Executa a instalacao Debian no shell real do Termux."
@@ -457,7 +457,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "continue_patch_check" \
     "Continue / VS Code" \
     "Verificar patch local do Continue" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check" \
     "handler_patch_check" \
     "0" \
     "Confere se o patch estrutural do Continue segue ativo."
@@ -466,7 +466,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "continue_patch_apply" \
     "Continue / VS Code" \
     "Aplicar ou reaplicar patch local do Continue" \
-    "bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh" \
+    "bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh" \
     "handler_patch_apply" \
     "1" \
     "Reaplica o patch do Continue apos update ou reinstall da extensao."
@@ -475,8 +475,8 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --exp
     "deploy_termux_menu" \
     "Continue / VS Code" \
     "Copiar o menu do Termux para o dispositivo atual" \
-    "adb push /home/igor/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh /data/local/tmp/termux_workspace_menu.sh
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'mkdir -p \"\$HOME/bin\" && install -m 755 /data/local/tmp/termux_workspace_menu.sh \"\$HOME/bin/termux-workspace-menu\"'" \
+    "adb push ~/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh /data/local/tmp/termux_workspace_menu.sh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'mkdir -p \"\$HOME/bin\" && install -m 755 /data/local/tmp/termux_workspace_menu.sh \"\$HOME/bin/termux-workspace-menu\"'" \
     "handler_deploy_termux_menu" \
     "0" \
     "Instala ou atualiza o helper termux-workspace-menu no Termux atual."

@@ -14,15 +14,15 @@ Do not treat this file as a historical changelog.
 ## Current Script Audit State
 - Workspace migration state is now consolidated for active tooling:
   - the workspace itself no longer contains references to the pre-`AI/` project root
-  - active Codex state now points to `/home/igor/Documentos/AI/TermuxAiLocal`
+  - active Codex state now points to `~/Documentos/AI/TermuxAiLocal`
   - stale VS Code `workspaceStorage` for the old TermuxAiLocal root was removed
-  - the current Codex thread entry was retargeted to the new root in `~/.codex/state_5.sqlite`
+  - the current Codex thread entry was retargeted to the new root in `~/.codex/state_<n>.sqlite`
   - if a future Codex prompt still offers an old workspace, treat that as stale log/history noise first, not validated active state
 - Session closure state for this round:
   - consolidated backup created at:
-    - `/home/igor/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz`
+    - `~/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz`
     - checksum:
-      - `/home/igor/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz.sha256`
+      - `~/Documentos/Backups/TermuxAiLocal-codex-gpt-5.4-xhigh-v7-chatgpt-pro-consolidated-20260319-191503.tar.gz.sha256`
   - backup naming for this workspace is now explicitly expected to include:
     - Codex model: `gpt-5.4`
     - reasoning mode: `xhigh`
@@ -30,21 +30,21 @@ Do not treat this file as a historical changelog.
     - ChatGPT login tier string: `chatgpt-pro` or `chatgpt-business` when that tier is actually validated
   - current validated Codex login context for this round:
     - `codex login status`: `Logged in using ChatGPT`
-    - validated local auth claim: `chatgpt_plan_type='pro'`
+    - validated local login tier: `chatgpt-pro`
   - active configuration/state validation passed for:
-    - `/home/igor/.codex/config.toml`
-    - `/home/igor/.codex/rules/default.rules`
-    - `/home/igor/.codex/history.jsonl`
-    - `/home/igor/.config/Code/User/globalStorage/storage.json`
-    - `~/.codex/state_5.sqlite` logical thread state
-  - the current Codex thread now resolves to `/home/igor/Documentos/AI/TermuxAiLocal`
+    - `~/.codex/config.toml`
+    - `~/.codex/rules/default.rules`
+    - `~/.codex/history.jsonl`
+    - `~/.config/Code/User/globalStorage/storage.json`
+    - `~/.codex/state_<n>.sqlite` logical thread state
+  - the current Codex thread now resolves to `~/Documentos/AI/TermuxAiLocal`
   - this workspace is a Git repository on branch `main`; the current closure round can be validated with `git status --short`
   - the latest full backup captured the complete workspace tree, including the current dirty Git worktree and untracked helpers
   - residual references to the pre-`AI/` root may still exist in append-only historical logs such as `~/.codex/log/codex-tui.log` or old VS Code log directories; these are not active workspace-selection state
 - The latest pre-refactor backup after moving the workspace under `AI/` was created at:
-  - `/home/igor/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v5-moved-20260319-102313.tar.gz`
+  - `~/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v5-moved-20260319-102313.tar.gz`
   - checksum:
-    - `/home/igor/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v5-moved-20260319-102313.tar.gz.sha256`
+    - `~/Documentos/Backups/TermuxAiLocal-gtp-5.4-xhigh-fast-v5-moved-20260319-102313.tar.gz.sha256`
 - The host now has `shellcheck 0.10.0` installed for static auditing.
 - The latest script refactor round focused on removing duplication in the validated host-side paths, without changing canonical commands:
   - `lib/termux_common.sh`
@@ -67,12 +67,12 @@ Do not treat this file as a historical changelog.
   - `bash -n` passed on all repo `*.sh` files
   - `shellcheck` is clean on the main refactored files except for informational SC2016 cases where literal shell lines are intentionally written into other files
 - Runtime validation after the refactor:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`: passed
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`: passed
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`: passed
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run daily_flow --yes`: passed after the workspace move
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`: passed
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`: passed
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`: passed
+  - `bash ~/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run daily_flow --yes`: passed after the workspace move
   - latest baseline report:
-    - `/home/igor/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-105623/summary.txt`
+    - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-105623/summary.txt`
   - updated Termux menu was redeployed and validated with:
     - `termux-workspace-menu --list`
   - clean reinstall helper now also passed end-to-end with automatic post-install continuation:
@@ -84,7 +84,7 @@ Do not treat this file as a historical changelog.
     - Debian GUI reprovision plus `xeyes` validation after reinstall
 
 ## Workspace Identity
-- Root: `/home/igor/Documentos/AI/TermuxAiLocal`
+- Root: `~/Documentos/AI/TermuxAiLocal`
 - ADB target selection:
   - explicit `TERMUXAI_DEVICE_ID` / `--device` still has precedence
   - without an explicit selection, host wrappers now prefer a directly connected USB target
@@ -101,7 +101,7 @@ Do not treat this file as a historical changelog.
   - `Terminus`: `[32,749][1105,1488]`
   - `Termux:X11`: `[1129,96][2528,944]`
 - Canonical helper for that manual desktop layout:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh`
 - Current validated behavior of that helper:
   - after a cold Android reboot, the helper now reapplies the freeform layout after the Openbox/X11 session is ensured
   - this avoids the post-boot regression where `Termux` or `Terminus` could be relaunched fullscreen and escape the approved desktop arrangement
@@ -111,12 +111,12 @@ Do not treat this file as a historical changelog.
     - full Android reboot
     - wait for `sys.boot_completed=1` and `dev.bootcomplete=1`
     - `adb_desktop_mode.sh on`
-    - `TERMUXAI_DEVICE_ID=RX2Y901WJ2E bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+    - `TERMUXAI_DEVICE_ID=<ADB_USB_SERIAL> bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
 - Current validated Android desktop-state continuity:
   - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
   - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows
-  - the last validated manual SSH target inside `Terminus` was `DESKTOP_LINUX_IGOR`
-  - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_freeform_desktop.sh --restart --focus ssh` on the USB target `RX2Y901WJ2E`
+  - the last validated manual SSH target inside `Terminus` was `DESKTOP_LINUX`
+  - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_freeform_desktop.sh --restart --focus ssh` on the USB target `<ADB_USB_SERIAL>`
   - latest restored task bounds on the live tablet:
     - `Termux`: task `103` in `[32,96][1105,742]`
     - `Termux:X11`: task `104` in `[1129,96][2528,944]`
@@ -148,7 +148,7 @@ Do not treat this file as a historical changelog.
     - `adb shell wm shell desktopmode moveTaskToDesk TASK_ID DESK_ID`
   - `wm shell desktopmode canCreateDesk` and `getActivateDeskId` are not reliable on this build and returned `Not implemented` / invalid-command behavior during testing
   - canonical helper added for this Samsung desktop mode:
-    - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh`
   - validated helper actions:
     - `status`
     - `on`
@@ -163,7 +163,7 @@ Do not treat this file as a historical changelog.
     - `open --package com.android.settings --bounds '150 120 1200 900'` opened `Configurações` as `FREEFORM`
     - `resize --package com.android.settings --bounds '220 160 1280 980'` updated the real task bounds
     - `focus --package com.server.auditor.ssh.client` returned focus to `TerminalActivity` without relaunching a different screen of the app
-  - latest direct USB revalidation on `RX2Y901WJ2E` confirmed:
+  - latest direct USB revalidation on `<ADB_USB_SERIAL>` confirmed:
     - `status -> off -> on -> status` passed
     - the current live session uses `activeDesk=100`, not `91`
     - the desk id is session-specific and must not be hardcoded
@@ -178,12 +178,12 @@ Do not treat this file as a historical changelog.
     - `pair`: from `Pair device with pairing code`
   - do not assume the `pair` port is usable for `adb connect`
   - latest validated screen capture in this session showed:
-    - `connect`: `192.168.50.173:39575`
-    - `pair`: `192.168.50.173:33273`
-  - the host confirmed `192.168.50.173:39575` as `device` for model `SM-X736B`
+    - `connect`: `<ADB_WIFI_CONNECT_ENDPOINT>`
+    - `pair`: `<ADB_WIFI_PAIR_ENDPOINT>`
+  - the host confirmed `<ADB_WIFI_CONNECT_ENDPOINT>` as `device` for model `SM-X736B`
   - a later workstation validation confirmed the tablet simultaneously reachable by:
-    - USB: `RX2Y901WJ2E`
-    - Wi‑Fi: `192.168.50.173:39575`
+    - USB: `<ADB_USB_SERIAL>`
+    - Wi‑Fi: `<ADB_WIFI_CONNECT_ENDPOINT>`
   - with both transports present, the host wrappers correctly auto-selected the USB target
   - stale `offline` transports on old Wi‑Fi ports may accumulate and should be disconnected before continuing
 - Important scope boundary:
@@ -198,7 +198,7 @@ Do not treat this file as a historical changelog.
   - `n_ctx = 49152`
   - `n_seq_max = 1`
   - `n_slots = 1`
-- The current Continue binding in `/home/igor/.continue/config.yaml` is:
+- The current Continue binding in `~/.continue/config.yaml` is:
   - `provider = openai`
   - `model = qwen3-coder-30b-a3b-instruct`
   - `apiBase = http://127.0.0.1:1234/v1`
@@ -207,34 +207,34 @@ Do not treat this file as a historical changelog.
   - `topK = 1`
   - `maxTokens = 384`
 - The local Continue extension patch helper is:
-  - `/home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
+  - `~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
 - That helper now patches two Continue extension behaviors:
   - terminal failures always surface a visible `FALHA DETECTADA` banner in tool output
   - `llm/streamChat` and `chatDescriber/describe` webview errors log only compact metadata instead of stringifying the full message payload
 - Canonical patch check:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`
 - Canonical patch apply:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
 
 ## Canonical Host Commands
 - Interactive host menu:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh`
 - Clean reset:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 - Start validated desktop:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 - Authoritative baseline validation:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
 - Real Termux command from host:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 - Host-side X11 app launch:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
 - Hard close of the Android `Termux:X11` app:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_stop_termux_x11.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_stop_termux_x11.sh`
 - Samsung desktop mode helper:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status`
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on`
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh open --package com.server.auditor.ssh.client`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh status`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh on`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh open --package com.server.auditor.ssh.client`
 
 ## Clean Daily Flow
 The natural full flow is 7 steps:
@@ -252,7 +252,7 @@ Reason:
 
 ## Clean Reinstall Flow
 The canonical clean reinstall answer is exactly this one host command:
-1. `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
+1. `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
 
 Important:
 - do not replace this with Play Store or F-Droid advice
@@ -264,7 +264,7 @@ Important:
 
 ## Reinstall And Mirror State
 - The clean reinstall helper is:
-  - `/home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
+  - `~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
 - The bootstrap payload now fixes Termux mirrors before the first `pkg` operation.
 - The fixed mirror is `packages-cf.termux.dev`.
 - The bootstrap writes:
@@ -284,7 +284,7 @@ Important:
   - a freshly reinstalled app shell not yet ready for `run-as+spool`
   - orphaned Termux/X11/proot GUI processes that only disappear after a device reboot
 - The current payloads also ship the Termux-side interactive menu:
-  - source in repo: `/home/igor/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh`
+  - source in repo: `~/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh`
   - installed helper in Termux: `~/bin/termux-workspace-menu`
 - The new workspace menus were validated end-to-end:
   - host menu list: `workspace_host_menu.sh --list`
@@ -296,7 +296,7 @@ Important:
 ## Current Validated Baseline State
 - Baseline post-reinstall validation passed.
 - Latest authoritative baseline report:
-  - `/home/igor/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-105623/summary.txt`
+  - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-105623/summary.txt`
 - Expected success markers:
   - `status=success`
   - `Display unificado: :1`
@@ -306,9 +306,9 @@ Important:
 - Current live stack probe after Debian reprovision:
   - `X11=display-ready VIRGL=ativo MODE=plain DESKTOP=openbox WM=openbox RES=1280x720 PROFILE=performance OPENBOX_PROFILE=openbox-maxperf DRIVER=virgl-plain DBUS=active DISPLAY=:1`
 - Debian GUI was reinstalled after the clean Termux APK reinstall and revalidated with:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh`
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh`
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 ## Latest Host / Device Fixes
 - The launcher catalog on the live device was pruned again and dead entries were removed from the exported Debian app set.
@@ -374,7 +374,7 @@ Important:
 ## Openbox Functional Desktop Implemented
 - The Openbox host desktop was upgraded from a bare WM launch to a lightweight functional desktop.
 - Main implementation lives in:
-  - `/home/igor/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh`
+  - `~/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh`
 - New lightweight desktop components now installed in the host Termux stack:
   - `tint2`
   - `rofi`
@@ -420,7 +420,7 @@ Important:
   - `dunst` and `xfsettingsd` are only started when the profile enables DBus
 - Real validation completed:
   - canonical baseline passed:
-    - `/home/igor/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260317-231947/summary.txt`
+    - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260317-231947/summary.txt`
   - stack probe after start showed:
     - `X11=display-ready`
     - `VIRGL=ativo`
@@ -524,7 +524,7 @@ Important:
 
 ## Host Openbox Now Presents Debian First
 - The host Openbox desktop now behaves as a shell for Debian GUI usage instead of exposing host Termux apps by default.
-- Host-side helpers generated by `/home/igor/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh` now prefer Debian apps when `run-gui-debian` exists:
+- Host-side helpers generated by `~/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh` now prefer Debian apps when `run-gui-debian` exists:
   - `openbox-terminal` -> Debian terminal as the configured Debian user
   - `openbox-file-manager` -> Debian `thunar` as the configured Debian user
   - `openbox-settings` -> Debian `lxappearance` / `obconf`
@@ -562,7 +562,7 @@ Important:
 - The live fix already applied on device:
   - `termux-x11-preference showAdditionalKbd:false additionalKbdVisible:false swipeDownAction:"no action"`
 - The payload was updated so future reprovision/reinstall keeps this default:
-  - `/home/igor/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh`
+  - `~/Documentos/AI/TermuxAiLocal/Install/install_termux_stack.sh`
   - it now applies the hidden additional-keys preference set as part of the default Termux:X11 preferences
   - `~/bin/start-termux-x11` also reasserts these preferences when starting X11
 - If the user ever wants the bar back temporarily:
@@ -576,17 +576,17 @@ Important:
   - Debian install and Debian GUI launch use the new host-side wrappers correctly
 - Good reference sessions:
   - full natural flow:
-    - `/home/igor/.continue/sessions/7fa3a0f6-5c98-4f6e-9f95-69dc76af7e21.json`
+    - `~/.continue/sessions/<session>.json`
   - minimal repair:
-    - `/home/igor/.continue/sessions/b7555d5b-e2e7-4f55-b464-304e3c5ea5c4.json`
+    - `~/.continue/sessions/<session>.json`
   - stop-on-failure:
-    - `/home/igor/.continue/sessions/c9be4daf-8ff6-491b-a240-b5f4b6a5f41c.json`
+    - `~/.continue/sessions/<session>.json`
   - clean reinstall command-map:
-    - `/home/igor/.continue/sessions/61f70c7d-a654-48d8-8eae-88207f36abd0.json`
+    - `~/.continue/sessions/<session>.json`
   - synthetic stop-on-failure with raw shell:
-    - `/home/igor/.continue/sessions/be6af55b-dc35-4f08-aef3-c5225403aa7a.json`
+    - `~/.continue/sessions/<session>.json`
   - explicit 2-step success sequencing:
-    - `/home/igor/.continue/sessions/3b46a797-ae7f-4eba-95e5-6ff52c0b6eac.json`
+    - `~/.continue/sessions/<session>.json`
 
 ## Continue Current Open Issue
 - The remaining inflation problem is not the model load config.
@@ -609,7 +609,7 @@ Important:
 ## Latest Continue Retune
 - The short reinstall command-map retune materially improved the Continue behavior.
 - Current good reference session:
-  - `/home/igor/.continue/sessions/3c439e2e-73fc-4e6f-a4b1-05e02416f9af.json`
+  - `~/.continue/sessions/<session>.json`
 - Verified behavior in that session:
   - it read only `Workspace-Handoff.md` and `Local-Model-Execution-Guide.md`
   - it did not read `Install/adb_reinstall_termux_official.sh`
@@ -661,7 +661,7 @@ Important:
 - Direct LM Studio API probes after this retune:
   - clean reinstall command-map:
     - output was exactly:
-      1. `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
+      1. `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
   - full clean flow fallback without tools:
     - output was the exact canonical 7-step command list
 - Practical conclusion:
@@ -693,7 +693,7 @@ Important:
     - right branch in Continue:
       1. read this file
       2. read `Local-Model-Execution-Guide.md`
-      3. first `Run` = `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+      3. first `Run` = `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 - Latest short reinstall Continue retest:
   - prompt: `Como faco uma reinstalacao limpa completa do Termux? TESTE-REINSTALL-PRO-17`
   - verified behavior:
@@ -705,7 +705,7 @@ Important:
   - verified behavior:
     - it read `Workspace-Handoff.md` then `Local-Model-Execution-Guide.md`
     - the first `Run` returned to the canonical command:
-      - `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+      - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
     - this recovered the natural-language mapping that had briefly regressed toward reinstall
 - Latest minimal-repair Continue retest:
   - prompt: `Com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian. TESTE-MINREPAIR-PRO-2`
@@ -727,15 +727,15 @@ Important:
 - Remaining residual:
   - the synthetic raw-shell stop-on-failure residual is closed locally
   - practical fix:
-    - `/home/igor/.vscode/extensions/continue.continue-1.2.17-linux-x64/out/extension.js` now injects failure text into `run_terminal_command` output when a command exits non-zero without stdout/stderr
+    - `~/.vscode/extensions/continue.continue-*/out/extension.js` now injects failure text into `run_terminal_command` output when a command exits non-zero without stdout/stderr
     - the failure content now includes `FALHA DETECTADA` plus the failed command and exit code
-    - the patch is now reappliable through `/home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
+    - the patch is now reappliable through `~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh`
   - validated result:
-    - in `/home/igor/.continue/sessions/be6af55b-dc35-4f08-aef3-c5225403aa7a.json`, step 1 `exit 7` ran and step 2 did not run
+    - in `~/.continue/sessions/<session>.json`, step 1 `exit 7` ran and step 2 did not run
     - host markers confirmed `STEP1=yes` and `STEP2=no`
     - LM Studio log showed the tool output text contained the failure banner before the model decided the next step
   - regression check:
-    - `/home/igor/.continue/sessions/3b46a797-ae7f-4eba-95e5-6ff52c0b6eac.json` confirmed ordinary 2-step success sequencing still works
+    - `~/.continue/sessions/<session>.json` confirmed ordinary 2-step success sequencing still works
   - operational rule from now on:
     - after a clean LM Studio / Continue reinstall, or before the first clean Continue Agent behavior test, run the patch check helper and apply it if needed before trusting Continue stop-on-failure behavior
   - for real workspace wrappers that emit `FALHA DETECTADA` or `Command failed with exit code`, the stop-on-failure policy remains the relevant criterion
@@ -776,12 +776,12 @@ Important:
 - Do not move graphics ownership into Debian.
 - Do not reintroduce KiCad-specific flow as the main path.
 - Do not treat `llvmpipe` as success.
-- Do not use generic `cd ... && ./script` shortcuts in place of canonical absolute `bash /home/igor/...` commands.
+- Do not use generic `cd ... && ./script` shortcuts in place of canonical absolute `bash ~/...` commands.
 - Do not continue after `FALHA DETECTADA` if the user asked to stop on failure.
 
 ## Next Best Action
 - If the task is execution, testing, validation, provisioning, recovery, or command-map behavior:
-  - prefer `/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
+  - prefer `~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
 - If the task is only a short Continue clean reinstall command-map answer:
   - read only `Local-Model-Execution-Guide.md`
 - If the task is only a short Continue smoke test for `reset -> start -> validate`:

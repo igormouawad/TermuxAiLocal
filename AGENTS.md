@@ -1,7 +1,7 @@
 # Workspace Directives
 
 ## Scope
-These instructions apply to the entire workspace at `/home/igor/Documentos/AI/TermuxAiLocal`.
+These instructions apply to the entire workspace at `~/Documentos/AI/TermuxAiLocal`.
 
 ## Primary Mission
 Continue this project with the same behavior already established in the workspace:
@@ -13,24 +13,24 @@ Continue this project with the same behavior already established in the workspac
 
 ## Mandatory Reading Order
 Before doing substantial work, read these files in this order:
-1. [Workspace-Handoff.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md)
-2. [README_ADB.md](/home/igor/Documentos/AI/TermuxAiLocal/README_ADB.md)
-3. [Termux-Android-Best-Practices.md](/home/igor/Documentos/AI/TermuxAiLocal/Termux-Android-Best-Practices.md)
-4. [Workspace-Study-Base.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md) only when the task explicitly involves external links, technical research, source comparison, or documentation study
-5. [Local-Model-System-Prompt.md](/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-System-Prompt.md) only when editing or tuning the local model prompt, preset, or inference behavior itself
+1. [Workspace-Handoff.md](~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md)
+2. [README_ADB.md](~/Documentos/AI/TermuxAiLocal/README_ADB.md)
+3. [Termux-Android-Best-Practices.md](~/Documentos/AI/TermuxAiLocal/Termux-Android-Best-Practices.md)
+4. [Workspace-Study-Base.md](~/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md) only when the task explicitly involves external links, technical research, source comparison, or documentation study
+5. [Local-Model-System-Prompt.md](~/Documentos/AI/TermuxAiLocal/Local-Model-System-Prompt.md) only when editing or tuning the local model prompt, preset, or inference behavior itself
 
 Exceptions that override the generic reading order above:
 - In Continue Agent, for a natural request like `fluxo diario limpo completo do workspace`, the first actions must be:
-  1. read [Workspace-Handoff.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md)
-  2. read [Local-Model-Execution-Guide.md](/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md)
-  3. then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+  1. read [Workspace-Handoff.md](~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md)
+  2. read [Local-Model-Execution-Guide.md](~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md)
+  3. then run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 - For that same natural full-flow request, do not start with `file_glob_search`, repo-shortcut discovery, or invented paths such as `Daily-Flow/clean-full-workspace-flow.sh`.
-- In Continue Agent, for a short command-map answer limited to the clean reinstall flow, read only [Local-Model-Execution-Guide.md](/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) after `AGENTS.md` is already applied by the UI.
-- For that short clean reinstall command-map answer, treat [Local-Model-Execution-Guide.md](/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) as the syntax-authoritative source; do not open implementation scripts just to re-verify the same command.
-- In Continue Agent, for a short smoke test limited to canonical `reset -> start -> validate` on an already-provisioned stack, the minimal read set is [Workspace-Handoff.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md) plus [Local-Model-Execution-Guide.md](/home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) after `AGENTS.md` is already applied by the UI.
+- In Continue Agent, for a short command-map answer limited to the clean reinstall flow, read only [Local-Model-Execution-Guide.md](~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) after `AGENTS.md` is already applied by the UI.
+- For that short clean reinstall command-map answer, treat [Local-Model-Execution-Guide.md](~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) as the syntax-authoritative source; do not open implementation scripts just to re-verify the same command.
+- In Continue Agent, for a short smoke test limited to canonical `reset -> start -> validate` on an already-provisioned stack, the minimal read set is [Workspace-Handoff.md](~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md) plus [Local-Model-Execution-Guide.md](~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md) after `AGENTS.md` is already applied by the UI.
 - The short clean reinstall command-map answer is not substantial work. It is a fixed runbook answer. This exception overrides inspect-first behavior, generic mandatory reads, and tool-use defaults for that case.
-- For a clean LM Studio / Continue reinstall, or for the first clean Continue Agent behavior test after such a reinstall, first verify the local Continue extension patch with `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`.
-- If that check is not already patched, apply `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh` before any Continue behavior test.
+- For a clean LM Studio / Continue reinstall, or for the first clean Continue Agent behavior test after such a reinstall, first verify the local Continue extension patch with `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh --check`.
+- If that check is not already patched, apply `bash ~/Documentos/AI/TermuxAiLocal/Install/apply_continue_extension_patch.sh` before any Continue behavior test.
 - After applying that patch, reload the VS Code window before the next Continue test.
 
 ## Non-Negotiable Project Rules
@@ -59,7 +59,7 @@ Exceptions that override the generic reading order above:
 11. For execution, testing, validation, provisioning, recovery, or command-map tasks, do not read `Workspace-Study-Base.md` unless the user explicitly asked for research or external source analysis.
 12. For a short Continue Agent smoke test limited to the canonical `reset -> start -> validate` flow on an already-provisioned stack, the minimal read set is `Workspace-Handoff.md` and `Local-Model-Execution-Guide.md` after `AGENTS.md` is already applied by the UI; do not add `README_ADB.md` or `Termux-Android-Best-Practices.md` unless the task explicitly involves provisioning, reinstall, or architecture diagnosis.
 13. For reinstall, reprovision, bootstrap, mirror, or `como faço` command-map questions, do not answer from generic Android or generic Termux memory; anchor the answer in the validated workspace scripts and stop points.
-14. For a full clean reinstall request, the canonical host command is `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`.
+14. For a full clean reinstall request, the canonical host command is `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`.
 15. For that reinstall flow, `adb_reinstall_termux_official.sh` already opens `Termux:API`, launches the app `Termux`, waits for readiness, and runs `bash /data/local/tmp/install_termux_repo_bootstrap.sh` automatically.
 16. Wrong reinstall answer:
    - uninstall manually
@@ -68,7 +68,7 @@ Exceptions that override the generic reading order above:
    - run `pkg update && pkg upgrade`
    - run `proot-distro install debian`
 17. Right reinstall answer:
-   - `bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
+   - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
 18. For a clean reinstall command-map answer, prefer exactly this single host command and nothing else. The helper already performs the post-install `Termux:API` open, the Termux readiness wait, and the automatic bootstrap inside the app Termux.
 19. For that clean reinstall command-map answer, do not read `Install/adb_reinstall_termux_official.sh`, `Install/install_termux_repo_bootstrap.sh`, or `Install/install_termux_stack.sh` if `Local-Model-Execution-Guide.md` already defines the validated flow.
 20. For that clean reinstall command-map answer, do not add “what the script does”, cleanup internals, mirror internals, or package lists. Return only the canonical one-liner.
@@ -78,18 +78,18 @@ Exceptions that override the generic reading order above:
 24. Natural-language mapping matters: `fluxo diario limpo completo do workspace` means the canonical 7-step daily flow, not reinstall.
 25. For that natural full-flow request, do not invent shortcut wrappers or repo paths such as `Daily-Flow/clean-full-workspace-flow.sh`. Expand to the canonical 7 absolute commands instead.
 26. In Continue Agent, for that natural full-flow request, the first actions must be:
-   - `Continue read /home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md`
-   - `Continue read /home/igor/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
-   - then the first `Run` must be `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
+   - `Continue read ~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md`
+   - `Continue read ~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
+   - then the first `Run` must be `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 27. For that same natural full-flow request, do not start with `run_terminal_command`, `file_glob_search`, or any repo shortcut before those two reads.
 28. Natural-language mapping matters: `com o stack atual` or `apenas o necessario` means minimal repair from current state, not reinstall.
 29. Natural-language mapping matters: `reinstalacao limpa completa do Termux` means the one-step host reinstall flow, not the daily flow.
 30. For a natural minimal-repair request such as `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical sequence is:
-   - first: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
+   - first: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
    - if that probe already shows `DESKTOP=openbox`, do not reset and do not start again before the X11 step
-   - if that probe shows `DESKTOP=inativo`, run only `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
-   - then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-   - then run `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+   - if that probe shows `DESKTOP=inativo`, run only `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+   - then run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
+   - then run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 31. Wrong minimal-repair pattern for this workspace:
    - `ps -ef`
    - `which xeyes`
@@ -114,10 +114,10 @@ Exceptions that override the generic reading order above:
 43. If the task is to test, validate, or repair Continue behavior after a clean LM Studio / Continue reinstall, verify that patch first and apply it if missing before diagnosing the model.
 
 ## Source Priority For Research
-Use the priority model defined in [Workspace-Study-Base.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md):
+Use the priority model defined in [Workspace-Study-Base.md](~/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md):
 - primary: official Android, AVF, Termux docs and repos
 - secondary: technically relevant community repos
 - contextual: chats, forums, Telegram, Reddit, and similar informal channels
 
 ## Continuation Target
-These directives are designed so another agent, especially a local coding model, can continue the workspace with behavior consistent with the validated flow already established here. The full state, fixes, and runbook are in [Workspace-Handoff.md](/home/igor/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md).
+These directives are designed so another agent, especially a local coding model, can continue the workspace with behavior consistent with the validated flow already established here. The full state, fixes, and runbook are in [Workspace-Handoff.md](~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md).

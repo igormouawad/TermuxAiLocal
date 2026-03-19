@@ -15,7 +15,7 @@ Este projeto organiza o provisionamento de uma stack Termux/Termux:X11 em dispos
 
 ## Raiz oficial do projeto
 
-`/home/igor/Documentos/AI/TermuxAiLocal`
+`~/Documentos/AI/TermuxAiLocal`
 
 Os scripts host-side resolvem essa raiz dinamicamente a partir do diretório do repositório e compartilham a biblioteca `lib/termux_common.sh` para padronizar falhas, checagem de dependências, seleção do alvo ADB e execução remota com `adb -s`.
 
@@ -37,9 +37,9 @@ Entry point interativo do host:
 Uso rapido:
 
 - listar itens do menu do host:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --list`
+  - `bash ~/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --list`
 - executar um item do host por `ACTION_ID`:
-  - `bash /home/igor/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run stack_status --yes`
+  - `bash ~/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run stack_status --yes`
 - listar itens do menu no Termux:
   - `termux-workspace-menu --list`
 - executar um item do menu no Termux por `ACTION_ID`:
@@ -295,7 +295,7 @@ Quando o objetivo for remover a stack Termux atual, trocar a origem dos APKs com
 1. No host, executar:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
+bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 ```
 
 2. O script host-side vai:
@@ -341,7 +341,7 @@ bash /data/local/tmp/install_termux_stack.sh
 2. Rodar `Install/adb_provision.sh` no host.
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh
+bash ~/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh
 ```
 3. O script transfere o payload e abre o app Termux.
 4. Executar manualmente no app Termux:
@@ -354,7 +354,7 @@ bash /data/local/tmp/install_termux_stack.sh
 5.1. Antes de qualquer fluxo novo, e sempre que um fluxo falhar, resetar completamente o ecossistema Termux:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 ```
 
 5.1.1. O reset host-side agora restaura automaticamente o layout obrigatório do projeto:
@@ -372,7 +372,7 @@ adb -s "$DEVICE_ID" shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' |
 5.3. Antes de testes longos com muitos subprocessos, aplicar o override recomendado para `phantom process killing`:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_configure_phantom_processes.sh --apply
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_configure_phantom_processes.sh --apply
 ```
 
 ## Fluxo Debian Trixie + Apps GUI
@@ -380,7 +380,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_configure_phantom_processes.
 1. No host, preparar e enviar os payloads Debian GUI:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh
+bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh
 ```
 
 2. O script host-side vai resetar o ecossistema Termux, reenviar os payloads Debian GUI para `/data/local/tmp/` e abrir o app Termux.
@@ -394,7 +394,7 @@ bash /data/local/tmp/install_debian_trixie_gui.sh
 Ou, diretamente do host com sincronização real:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh
+bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui.sh
 ```
 
 4. Depois da instalação do Debian Trixie e do usuário escolhido, garantir uma sessão gráfica ativa em `:1`.
@@ -402,7 +402,7 @@ bash /home/igor/Documentos/AI/TermuxAiLocal/Debian/adb_install_debian_trixie_gui
 No host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh xfce
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh xfce
 ```
 
 Ou no próprio Termux:
@@ -452,67 +452,67 @@ Observações importantes do fluxo Debian:
 6. Para validar o baseline de forma reproduzível a partir do host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh
 ```
 
 6.1. Para validar explicitamente o perfil leve estável:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-stable
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-stable
 ```
 
 6.2. Para validar explicitamente o perfil funcional:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce
 ```
 
 7. Para incluir também a trilha gráfica segura via `virgl` + EGL/GLES:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu
 ```
 
 8. Para persistir artefatos da validação no host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu --report
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu --report
 ```
 
 9. Para validar baseline com permanência controlada da sessão:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --with-gpu --report --stress-seconds=30
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --with-gpu --report --stress-seconds=30
 ```
 
 10. Para enviar um comando ao X11 `:1` a partir do host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh xterm
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh xterm
 ```
 
 11. Para executar um comando dentro de uma nova janela `xterm` no X11:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm xterm
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm xterm
 ```
 
 12. Para executar um script local no contexto X11 de forma robusta:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm --script /caminho/no/host/meu-teste-x11.sh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm --script /caminho/no/host/meu-teste-x11.sh
 ```
 
 12.1. Para lançar um app no X11 já exigindo virgl:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl glmark2
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl glmark2
 ```
 
 12.2. Para rodar o benchmark pelo helper dedicado:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl run-glmark2-x11
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl run-glmark2-x11
 ```
 
 13. Para iniciar o desktop XFCE no display `:1`:
@@ -524,7 +524,7 @@ start-xfce-x11
 13.1. Para iniciar o desktop a partir do host já validando virgl/EGL:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu xfce
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu xfce
 ```
 
 14. Para encerrar a sessão XFCE de forma limpa:
@@ -554,7 +554,7 @@ set-x11-resolution native
 18. Para aplicar a resolução a partir do host:
 
 ```bash
-bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance
 ```
 
 ## Observação de arquitetura
@@ -671,24 +671,24 @@ Esses pontos não são confiáveis por ADB genérico e devem ser conferidos manu
 - para aplicar a melhor resolução de performance neste tablet: `set-x11-resolution performance` (`1280x720`)
 - para aplicar uma resolução intermediária: `set-x11-resolution balanced`
 - para restaurar a resolução nativa: `set-x11-resolution native`
-- para aplicar a resolução a partir do host: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance`
-- para validar esse baseline a partir do host sem repetir a coleta manual: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh`
-- para validar explicitamente o perfil Openbox diário: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf`
-- para validar explicitamente o perfil Openbox estável: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-stable`
-- para validar explicitamente o perfil XFCE: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce`
-- para validar explicitamente o perfil XFCE com Openbox como WM: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --wm=openbox`
-- para validar o baseline incluindo o caminho gráfico seguro: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu`
-- para salvar resumo e dumps XML da validação: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu --report`
-- para segurar a sessão X11 por um intervalo curto e testar estabilidade: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --with-gpu --report --stress-seconds=30`
-- para executar um app diretamente no display `:1`: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh xterm`
-- para abrir um app em uma nova janela terminal do X11: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm xterm`
-- para executar um script local no X11 sem depender de quoting do teclado Android: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm --script /caminho/no/host/meu-teste-x11.sh`
-- para executar um app no X11 exigindo virgl e `GALLIUM_DRIVER=virpipe`: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl glmark2`
-- para rodar o benchmark 3D pelo helper dedicado: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl run-glmark2-x11`
-- para subir o XFCE já com validação do renderer acelerado: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu xfce`
-- para subir o XFCE já com Openbox como WM e validação do renderer acelerado: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --wm openbox xfce`
-- para subir o perfil agressivo completo a partir do host: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --maxperf openbox`
-- para manter XFCE, mas no perfil agressivo do host: `bash /home/igor/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --maxperf xfce`
+- para aplicar a resolução a partir do host: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance`
+- para validar esse baseline a partir do host sem repetir a coleta manual: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh`
+- para validar explicitamente o perfil Openbox diário: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf`
+- para validar explicitamente o perfil Openbox estável: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-stable`
+- para validar explicitamente o perfil XFCE: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce`
+- para validar explicitamente o perfil XFCE com Openbox como WM: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --wm=openbox`
+- para validar o baseline incluindo o caminho gráfico seguro: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu`
+- para salvar resumo e dumps XML da validação: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --with-gpu --report`
+- para segurar a sessão X11 por um intervalo curto e testar estabilidade: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=xfce --with-gpu --report --stress-seconds=30`
+- para executar um app diretamente no display `:1`: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh xterm`
+- para abrir um app em uma nova janela terminal do X11: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm xterm`
+- para executar um script local no X11 sem depender de quoting do teclado Android: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --xterm --script /caminho/no/host/meu-teste-x11.sh`
+- para executar um app no X11 exigindo virgl e `GALLIUM_DRIVER=virpipe`: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl glmark2`
+- para rodar o benchmark 3D pelo helper dedicado: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh --with-virgl run-glmark2-x11`
+- para subir o XFCE já com validação do renderer acelerado: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu xfce`
+- para subir o XFCE já com Openbox como WM e validação do renderer acelerado: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --wm openbox xfce`
+- para subir o perfil agressivo completo a partir do host: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --maxperf openbox`
+- para manter XFCE, mas no perfil agressivo do host: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --maxperf xfce`
 - neste hardware, trate `es2_info` e `es2gears_x11` como evidência principal de aceleração; não use `glxinfo` sozinho como verdade absoluta sobre o estado do `virgl`
 - `glmark2` onscreen e `glmark2-es2 --off-screen` não são comparáveis diretamente; o score onscreen sofre com resolução, composição e custo do desktop, enquanto `--off-screen` isola melhor o renderer bruto
 - medição recente no perfil final `XFCE + Openbox` com `glmark2-es2 --off-screen` em `plain`: `glmark2 Score: 502`
