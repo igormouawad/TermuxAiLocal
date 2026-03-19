@@ -15,9 +15,20 @@ PAYLOAD_FILES=(
   "run_gui_in_debian.sh"
 )
 FORWARDED_ARGS=()
+TOTAL_STEPS=3
+CURRENT_STEP=0
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 run_adb() {
@@ -63,10 +74,13 @@ termux::require_host_command \
   'Não é possível orquestrar o dispositivo Android a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
+step_begin 'Resetando o workspace e preparando o desktop livre base'
 bash "${PROJECT_ROOT}/ADB/adb_reset_termux_stack.sh" --focus termux >/dev/null
 
 DEVICE_ID=$(termux::resolve_target_device)
+step_ok 'Reset concluído e device resolvido para o provisionamento Debian.'
 
+step_begin 'Enviando os payloads Debian GUI para /data/local/tmp'
 for file_name in "${PAYLOAD_FILES[@]}"; do
   if [ ! -f "${SCRIPT_DIR}/${file_name}" ]; then
     fail \
@@ -79,7 +93,9 @@ for file_name in "${PAYLOAD_FILES[@]}"; do
   run_adb push "${SCRIPT_DIR}/${file_name}" "${REMOTE_DIR}/${file_name}" >/dev/null
   run_adb shell chmod 755 "${REMOTE_DIR}/${file_name}" >/dev/null
 done
+step_ok 'Payloads Debian GUI enviados e marcados como executáveis.'
 
+step_begin 'Reconstruindo o desktop livre antes da instalação manual ou síncrona'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -87,6 +103,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'O provisionamento Debian terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
     'Reconstruir o desktop livre aprovado e repetir o provisionamento.'
 fi
+step_ok 'Desktop livre pronto para a etapa Debian seguinte.'
 
 install_command=(bash /data/local/tmp/install_debian_trixie_gui.sh)
 if [ "${#FORWARDED_ARGS[@]}" -gt 0 ]; then

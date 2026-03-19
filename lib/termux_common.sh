@@ -24,6 +24,72 @@ termux::fail() {
   exit 1
 }
 
+termux::progress_percent() {
+  local current="$1"
+  local total="$2"
+
+  if [ "$total" -le 0 ] 2>/dev/null; then
+    printf '100\n'
+    return 0
+  fi
+
+  printf '%s\n' $((current * 100 / total))
+}
+
+termux::progress_bar() {
+  local current="$1"
+  local total="$2"
+  local width="${3:-24}"
+  local filled=0
+  local empty
+
+  if [ "$total" -gt 0 ] 2>/dev/null; then
+    filled=$((current * width / total))
+  fi
+  empty=$((width - filled))
+
+  printf '['
+  printf '%*s' "$filled" '' | tr ' ' '#'
+  printf '%*s' "$empty" '' | tr ' ' '.'
+  printf ']'
+}
+
+termux::progress_step() {
+  local current="$1"
+  local total="$2"
+  local context="$3"
+  local label="$4"
+  local percent
+
+  percent="$(termux::progress_percent "$current" "$total")"
+  printf '[%s] %s (%s/%s %s%%) %s\n' \
+    "$context" \
+    "$(termux::progress_bar "$current" "$total")" \
+    "$current" \
+    "$total" \
+    "$percent" \
+    "$label"
+}
+
+termux::progress_result() {
+  local status_label="$1"
+  local current="$2"
+  local total="$3"
+  local context="$4"
+  local message="$5"
+  local percent
+
+  percent="$(termux::progress_percent "$current" "$total")"
+  printf '[%s:%s %s%%] %s\n' "$context" "$status_label" "$percent" "$message"
+}
+
+termux::progress_note() {
+  local context="$1"
+  local message="$2"
+
+  printf '[%s] %s\n' "$context" "$message"
+}
+
 termux::require_host_command() {
   local binary_name="$1"
   local impact_text="$2"

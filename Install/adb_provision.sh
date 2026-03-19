@@ -14,6 +14,8 @@ PAYLOAD_TARGET="/data/local/tmp/install_termux_stack.sh"
 BOOTSTRAP_TARGET="/data/local/tmp/install_termux_repo_bootstrap.sh"
 TERMUX_MENU_TARGET="/data/local/tmp/termux_workspace_menu.sh"
 ANDROID_PRIMARY_USER="0"
+TOTAL_STEPS=3
+CURRENT_STEP=0
 REQUIRED_APPS=(
   "com.termux"
   "com.termux.api"
@@ -22,6 +24,15 @@ REQUIRED_APPS=(
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 run_adb() {
@@ -39,6 +50,7 @@ termux::require_host_command \
 
 DEVICE_ID=$(termux::resolve_target_device)
 
+step_begin 'Auditando pré-requisitos Android e arquivos locais do payload'
 if [ ! -f "$PAYLOAD_SOURCE" ]; then
   fail \
     "test -f \"$PAYLOAD_SOURCE\"" \
@@ -91,14 +103,18 @@ if [ "${#missing_apps[@]}" -gt 0 ]; then
     "O perfil principal suportado pelo ADB não atende aos pré-requisitos obrigatórios do projeto." \
     "Instalar os apps Android obrigatórios no usuário principal do Android e executar o script novamente."
 fi
+step_ok 'Pré-requisitos locais e apps Android obrigatórios confirmados.'
 
+step_begin 'Enviando payloads para /data/local/tmp e ajustando permissões'
 run_adb push "$PAYLOAD_SOURCE" "$PAYLOAD_TARGET" >/dev/null
 run_adb push "$BOOTSTRAP_SOURCE" "$BOOTSTRAP_TARGET" >/dev/null
 run_adb push "$TERMUX_MENU_SOURCE" "$TERMUX_MENU_TARGET" >/dev/null
 run_adb shell chmod +x "$PAYLOAD_TARGET" >/dev/null
 run_adb shell chmod +x "$BOOTSTRAP_TARGET" >/dev/null
 run_adb shell chmod +x "$TERMUX_MENU_TARGET" >/dev/null
+step_ok 'Payload principal, bootstrap e menu Termux enviados com sucesso.'
 
+step_begin 'Reconstruindo o desktop livre base antes da execução manual no Termux'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -106,6 +122,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'O provisionamento terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
     'Reconstruir o desktop livre aprovado ou repetir o provisionamento.'
 fi
+step_ok 'Desktop livre preparado para a execução manual do payload.'
 
 printf 'Provisionamento concluído no host.\n'
 printf 'Dispositivo: %s\n' "$DEVICE_ID"

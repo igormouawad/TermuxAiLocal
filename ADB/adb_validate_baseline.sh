@@ -15,6 +15,8 @@ XFCE_WM="xfwm4"
 OPENBOX_PROFILE="openbox-maxperf"
 WM_EXPLICIT=0
 ANDROID_PRIMARY_USER="0"
+TOTAL_STEPS=4
+CURRENT_STEP=0
 X11_UI_REMOTE="/sdcard/Download/termux_x11_baseline_validation.xml"
 TERMUX_OUTPUT_LOCAL="$(mktemp)"
 X11_UI_LOCAL="$(mktemp)"
@@ -69,6 +71,15 @@ fail() {
   write_report "impact=${impact_text}"
   write_report "next_step=${next_step_text}"
   exit 1
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 run_adb() {
@@ -201,6 +212,29 @@ validate_desktop_processes() {
   esac
 }
 
+normalized_args=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --desktop|--profile|--wm)
+      local_flag="$1"
+      shift
+      if [ "$#" -eq 0 ]; then
+        fail \
+          'validação de argumentos' \
+          "Falta valor para ${local_flag}." \
+          'A validação não consegue inferir esse parâmetro sem um valor explícito.' \
+          "Fornecer um valor para ${local_flag}."
+      fi
+      normalized_args+=("${local_flag}=$1")
+      ;;
+    *)
+      normalized_args+=("$1")
+      ;;
+  esac
+  shift || true
+done
+set -- "${normalized_args[@]}"
+
 for arg in "$@"; do
   case "$arg" in
     --with-gpu)
@@ -261,6 +295,14 @@ if ! [[ "$STRESS_SECONDS" =~ ^[0-9]+$ ]]; then
     'Usar um inteiro como --stress-seconds=30.'
 fi
 
+if [ "$WITH_GPU_CHECK" -eq 1 ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))
+fi
+
+if [ "$STRESS_SECONDS" -gt 0 ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))
+fi
+
 if ! termux::desktop_profile_valid "$DESKTOP_PROFILE"; then
     fail \
       'validação de argumentos' \
@@ -309,6 +351,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 
 write_report "device_id=${DEVICE_ID}"
+step_begin 'Coletando metadados do device e auditando os apps Android obrigatórios'
 collect_device_metadata
 
 packages_output=$(run_adb shell pm list packages --user "$ANDROID_PRIMARY_USER")
@@ -324,7 +367,9 @@ for package_name in com.termux com.termux.api com.termux.x11; do
 done
 
 write_report 'android_package_audit=ok'
+step_ok 'Metadados coletados e apps Android obrigatórios confirmados.'
 
+step_begin 'Resetando o ecossistema Termux no desktop mode livre do workspace'
 bash "${PROJECT_ROOT}/adb_reset_termux_stack.sh" --focus x11 >/dev/null
 if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 10; then
   fail \
@@ -335,6 +380,7 @@ if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 
 fi
 write_report 'termux_stack_reset=ok'
 write_report 'termux_x11_surface=ok'
+step_ok 'Reset concluído e surface X11 detectada.'
 
 desktop_start_helper_name="$(termux::desktop_start_helper "$DESKTOP_PROFILE" 0)"
 desktop_stop_helper_name="$(termux::desktop_stop_helper "$DESKTOP_PROFILE")"
@@ -349,6 +395,7 @@ stop_helper_output="$(send_termux_command "command -v ${desktop_stop_helper_name
 require_in_text "$start_helper_output" "/data/data/com.termux/files/home/bin/${desktop_start_helper_name}" 'confirmação do helper de start do desktop'
 require_in_text "$stop_helper_output" "/data/data/com.termux/files/home/bin/${desktop_stop_helper_name}" 'confirmação do helper de stop do desktop'
 
+step_begin "Subindo e validando a sessão ${DESKTOP_PROFILE} no Termux"
 if [ "$WITH_GPU_CHECK" -eq 1 ] && [ "$DESKTOP_PROFILE" = 'xfce' ]; then
   send_termux_command \
     'start-virgl' \
@@ -365,8 +412,10 @@ send_termux_command "$desktop_start_command_text" 0 "$desktop_start_expectation"
 
 validate_desktop_processes
 write_report "desktop_start=${DESKTOP_PROFILE}_ok"
+step_ok "Sessão ${DESKTOP_PROFILE} ativa e processos centrais confirmados."
 
 if [ "$WITH_GPU_CHECK" -eq 1 ]; then
+  step_begin 'Executando a validação autoritativa de VirGL/EGL no desktop ativo'
   if [ "$DESKTOP_PROFILE" = 'openbox' ]; then
     virgl_status_output="$(send_termux_command 'termux-stack-status --brief' 0 'VIRGL=ativo')"
     require_in_text "$virgl_status_output" 'VIRGL=ativo' 'verificação do servidor virgl'
@@ -375,9 +424,11 @@ if [ "$WITH_GPU_CHECK" -eq 1 ]; then
   require_in_text "$gpu_probe_output" 'es2_info exit code: 0' 'execução do diagnóstico EGL/GLES'
   require_in_text "$gpu_probe_output" 'GL_RENDERER: virgl' 'renderer acelerado via virgl'
   write_report 'gpu_phase=ok'
+  step_ok 'Renderer VirGL confirmado pela trilha EGL/GLES.'
 fi
 
 if [ "$STRESS_SECONDS" -gt 0 ]; then
+  step_begin "Mantendo a sessão ativa por ${STRESS_SECONDS}s para teste curto de estabilidade"
   printf 'Mantendo sessão %s/X11 ativa por %s segundos.\n' "$DESKTOP_PROFILE" "$STRESS_SECONDS"
   write_report "desktop_stress_seconds=${STRESS_SECONDS}"
   sleep "$STRESS_SECONDS"
@@ -390,13 +441,16 @@ if [ "$STRESS_SECONDS" -gt 0 ]; then
   fi
   validate_desktop_processes
   write_report "desktop_stress=${DESKTOP_PROFILE}_ok"
+  step_ok 'A sessão permaneceu estável durante a janela curta de stress.'
 fi
 
+step_begin "Encerrando a sessão ${DESKTOP_PROFILE} e finalizando o relatório"
 desktop_stop_output="$(send_termux_command "$desktop_stop_command_text" 0 "$desktop_stop_expectation")"
 require_in_text "$desktop_stop_output" "$desktop_stop_expectation" 'encerramento limpo da sessão do desktop/X11'
 
 write_report "desktop_stop=${DESKTOP_PROFILE}_ok"
 write_report 'status=success'
+step_ok 'Sessão encerrada com limpeza e artefatos persistidos.'
 
 printf 'Validação baseline concluída com sucesso.\n'
 printf 'Dispositivo: %s\n' "$DEVICE_ID"

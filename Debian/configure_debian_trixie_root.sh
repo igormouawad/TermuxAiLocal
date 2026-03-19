@@ -33,6 +33,18 @@ progress_bar() {
   printf ']'
 }
 
+progress_percent() {
+  local current="$1"
+  local total="$2"
+
+  if [ "$total" -le 0 ] 2>/dev/null; then
+    printf '100\n'
+    return 0
+  fi
+
+  printf '%s\n' $((current * 100 / total))
+}
+
 safe_slug() {
   printf '%s' "$1" | tr -cs 'A-Za-z0-9._-' '_'
 }
@@ -85,14 +97,16 @@ run_step() {
   shift
   local slug
   local status
+  local percent
 
   CURRENT_STEP=$((CURRENT_STEP + 1))
   slug="$(safe_slug "$label")"
   LAST_STEP_LOG="/tmp/root-step-$(printf '%02d' "$CURRENT_STEP")-${slug}.log"
   : > "$LAST_STEP_LOG"
+  percent="$(progress_percent "$CURRENT_STEP" "$TOTAL_STEPS")"
 
-  printf '\n%s (%s/%s) %s\n' "$(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS")" "$CURRENT_STEP" "$TOTAL_STEPS" "$label" | tee -a "$SCRIPT_LOG"
-  printf '[cmd] %s\n' "$(command_text "$@")" | tee -a "$SCRIPT_LOG"
+  printf '\n[DEBIAN-ROOT] %s (%s/%s %s%%) %s\n' "$(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS")" "$CURRENT_STEP" "$TOTAL_STEPS" "$percent" "$label" | tee -a "$SCRIPT_LOG"
+  printf '[DEBIAN-ROOT:CMD] %s\n' "$(command_text "$@")" | tee -a "$SCRIPT_LOG"
 
   set +e
   "$@" 2>&1 | tee "$LAST_STEP_LOG" | tee -a "$SCRIPT_LOG"
@@ -106,6 +120,8 @@ run_step() {
       'A configuração root do Debian Trixie foi interrompida.' \
       'Corrigir o erro retornado e repetir a configuração dentro do proot.'
   fi
+
+  printf '[DEBIAN-ROOT:OK %s%%] Etapa concluída: %s\n' "$percent" "$label" | tee -a "$SCRIPT_LOG"
 }
 
 ensure_group() {

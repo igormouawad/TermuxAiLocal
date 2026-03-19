@@ -3,11 +3,23 @@
 set -euo pipefail
 
 MAIN_PAYLOAD="/data/local/tmp/install_termux_stack.sh"
-TOTAL_STEPS=3
+TOTAL_STEPS=4
 CURRENT_STEP=0
 TERMUX_MAIN_REPO_URL="${TERMUX_MAIN_REPO_URL:-https://packages-cf.termux.dev/apt/termux-main}"
 TERMUX_ROOT_REPO_URL="${TERMUX_ROOT_REPO_URL:-https://packages-cf.termux.dev/apt/termux-root}"
 TERMUX_X11_REPO_URL="${TERMUX_X11_REPO_URL:-https://packages-cf.termux.dev/apt/termux-x11}"
+
+progress_percent() {
+  local current="$1"
+  local total="$2"
+
+  if [ "$total" -le 0 ] 2>/dev/null; then
+    printf '100\n'
+    return 0
+  fi
+
+  printf '%s\n' $((current * 100 / total))
+}
 
 progress_bar() {
   local current="$1"
@@ -28,8 +40,16 @@ progress_bar() {
 }
 
 log_step() {
+  local percent
   CURRENT_STEP=$((CURRENT_STEP + 1))
-  printf '%s (%s/%s) %s\n' "$(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS")" "$CURRENT_STEP" "$TOTAL_STEPS" "$1"
+  percent="$(progress_percent "$CURRENT_STEP" "$TOTAL_STEPS")"
+  printf '[TERMUX] %s (%s/%s %s%%) %s\n' "$(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS")" "$CURRENT_STEP" "$TOTAL_STEPS" "$percent" "$1"
+}
+
+step_ok() {
+  local percent
+  percent="$(progress_percent "$CURRENT_STEP" "$TOTAL_STEPS")"
+  printf '[TERMUX:OK %s%%] %s\n' "$percent" "$1"
 }
 
 fail() {
@@ -81,6 +101,7 @@ if [ ! -d "/data/data/com.termux/files/usr" ] || [ "${PREFIX:-}" != "/data/data/
     "O script não está no contexto real necessário para reinstalar a stack do projeto." \
     "Abrir o app Termux e executar manualmente bash /data/local/tmp/install_termux_repo_bootstrap.sh."
 fi
+step_ok 'Contexto real do app Termux validado.'
 
 log_step 'Validando payload principal em /data/local/tmp'
 if [ ! -f "$MAIN_PAYLOAD" ]; then
@@ -98,9 +119,11 @@ if [ ! -r "$MAIN_PAYLOAD" ]; then
     "O bootstrap não consegue delegar para a instalação completa do projeto." \
     "Reexecutar o script host-side ou corrigir as permissões do payload em /data/local/tmp."
 fi
+step_ok "Payload principal validado em $MAIN_PAYLOAD."
 
 log_step 'Fixando mirror default do Termux antes do primeiro pkg'
 prime_termux_repos
+step_ok 'Mirror default do Termux fixado para o bootstrap.'
 
 log_step 'Delegando para o payload principal do projeto'
 printf 'Bootstrap do repositório validado no Termux.\n'

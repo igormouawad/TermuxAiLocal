@@ -16,6 +16,8 @@ OPENBOX_PROFILE='openbox-maxperf'
 FOCUS_TARGET='ssh'
 RESTART_APPS=0
 ENSURE_OPENBOX=1
+TOTAL_STEPS=5
+CURRENT_STEP=0
 WINDOWING_MODE=5
 DISPLAY_ID=0
 DESK_ID=''
@@ -45,6 +47,15 @@ usage() {
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -113,6 +124,10 @@ if ! termux::openbox_profile_valid "$OPENBOX_PROFILE"; then
     "Perfil Openbox inválido: $OPENBOX_PROFILE" \
     'A consolidação não consegue garantir uma sessão gráfica com perfil desconhecido.' \
     'Usar openbox-stable, openbox-maxperf, openbox-compat ou openbox-vulkan-exp.'
+fi
+
+if [ "$ENSURE_OPENBOX" -eq 0 ]; then
+  TOTAL_STEPS=4
 fi
 
 termux::require_host_command \
@@ -641,25 +656,34 @@ focus_task() {
 SSH_COMPONENT="$(resolve_component "$SSH_PACKAGE")"
 DESK_ID="$(resolve_desktop_desk_id)"
 
+step_begin 'Preparando o desktop mode livre e limpando UI residual do Termux:API'
 clear_termux_api_ui
 
 if [ "$RESTART_APPS" -eq 1 ]; then
   stop_desktop_apps
 fi
+step_ok 'Contexto Android pronto para reabrir o trio principal.'
 
+step_begin 'Abrindo Termux, Termux:X11 e o cliente SSH em janelas livres'
 TERMUX_TASK_ID="$(start_freeform_activity "$TERMUX_COMPONENT" "$TERMUX_TOKEN" 'Termux')"
 X11_TASK_ID="$(start_freeform_activity "$X11_COMPONENT" "$X11_TOKEN" 'Termux:X11')"
 SSH_TASK_ID="$(start_freeform_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
+step_ok 'As três janelas principais foram detectadas no desktop.'
 
+step_begin 'Aplicando bounds aprovados e consolidando o layout visível'
 apply_layout_to_current_tasks
+step_ok 'Bounds aprovados reaplicados ao trio principal.'
 
 STATUS_LINE='não solicitado'
 if [ "$ENSURE_OPENBOX" -eq 1 ]; then
+  step_begin 'Garantindo a sessão Openbox/X11 e reaplicando o layout final'
   STATUS_LINE="$(ensure_openbox_session)"
   refresh_layout_tasks
   apply_layout_to_current_tasks
+  step_ok 'Sessão Openbox/X11 validada e layout final reaplicado.'
 fi
 
+step_begin "Aplicando foco final em ${FOCUS_TARGET}"
 case "$FOCUS_TARGET" in
   termux)
     focus_task "$TERMUX_TASK_ID" "$TERMUX_BOUNDS"
@@ -671,6 +695,7 @@ case "$FOCUS_TARGET" in
     focus_task "$SSH_TASK_ID" "$SSH_BOUNDS"
     ;;
 esac
+step_ok "Foco final entregue para ${FOCUS_TARGET}."
 
 printf 'Desktop freeform consolidado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Display: [%s]\n' "$DISPLAY_BOUNDS"

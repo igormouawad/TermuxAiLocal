@@ -10,6 +10,8 @@ PROJECT_ROOT="$SCRIPT_DIR"
 MODE="--app"
 LOCAL_SCRIPT=""
 WITH_VIRGL=0
+TOTAL_STEPS=3
+CURRENT_STEP=0
 X11_UI_REMOTE="/sdcard/Download/adb_run_x11_command_x11.xml"
 X11_UI_LOCAL="$(mktemp)"
 
@@ -21,6 +23,15 @@ trap cleanup EXIT
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 run_adb() {
@@ -80,7 +91,11 @@ if [ -n "$LOCAL_SCRIPT" ] && [ ! -f "$LOCAL_SCRIPT" ]; then
     "test -f \"$LOCAL_SCRIPT\"" \
     'Script local não encontrado.' \
     'Não há conteúdo para enviar ao contexto X11 do dispositivo.' \
-    'Informar um caminho de script existente no host.'
+      'Informar um caminho de script existente no host.'
+fi
+
+if [ "$WITH_VIRGL" -eq 1 ]; then
+  TOTAL_STEPS=4
 fi
 
 termux::require_host_command \
@@ -89,6 +104,7 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+step_begin 'Preparando desktop mode livre e verificando a janela do Termux:X11'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -104,6 +120,7 @@ if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 
     'O app Termux:X11 não exibiu a superfície gráfica esperada.' \
     'Reabrir o app Termux:X11 e repetir a operação.'
 fi
+step_ok 'Workspace pronto e surface X11 confirmada.'
 
 command_text="run-in-x11 ${MODE}"
 
@@ -127,17 +144,24 @@ else
 fi
 
 if [ "$WITH_VIRGL" -eq 1 ]; then
+  step_begin 'Garantindo servidor VirGL para a execução no X11'
   bash "${PROJECT_ROOT}/adb_termux_send_command.sh" \
     --device "$DEVICE_ID" \
     --expect 'virgl_test_server_android iniciado em modo' \
     --expect 'virgl_test_server_android já está em execução' \
     -- 'mode=plain; if [ -f "$HOME/.config/termux-stack/session.env" ]; then . "$HOME/.config/termux-stack/session.env"; mode="${TERMUX_VIRGL_MODE:-plain}"; fi; start-virgl "$mode"'
+  step_ok 'VirGL garantido para o contexto X11.'
 fi
 
+step_begin 'Montando a linha final e preparando o contexto de execução'
+step_ok "Destino selecionado: ${MODE#--} no display :1."
+
+step_begin 'Executando o comando no contexto X11 apropriado'
 bash "${PROJECT_ROOT}/adb_termux_send_command.sh" \
   --device "$DEVICE_ID" \
   --expect "$expected_text" \
   -- "$command_text"
+step_ok 'Comando enviado ao X11 sem erro.'
 
 printf 'Comando enviado ao X11 no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Modo: %s\n' "$MODE"

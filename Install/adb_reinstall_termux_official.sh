@@ -20,6 +20,8 @@ TERMUX_APP_API="https://api.github.com/repos/termux/termux-app/releases/latest"
 TERMUX_API_API="https://api.github.com/repos/termux/termux-api/releases/latest"
 TERMUX_X11_API="https://api.github.com/repos/termux/termux-x11/releases/tags/nightly"
 DRY_RUN=0
+TOTAL_STEPS=12
+CURRENT_STEP=0
 REQUIRED_PACKAGES=(
   "com.termux"
   "com.termux.api"
@@ -54,7 +56,12 @@ TMP_RESIDUE_PATHS=(
 )
 
 log_step() {
-  printf '[termux-reinstall] %s\n' "$1"
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+log_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 fail() {
@@ -112,6 +119,12 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  TOTAL_STEPS=7
+else
+  TOTAL_STEPS=15
+fi
 
 resolve_device() {
   DEVICE_ID=$(termux::resolve_target_device)
@@ -256,6 +269,8 @@ cleanup_project_residue() {
   for path_name in "${SHARED_STORAGE_RESIDUE_PATHS[@]}"; do
     run_adb_best_effort shell sh -lc "rm -rf $path_name"
   done
+
+  log_ok 'Resíduos controlados do projeto limpos no dispositivo.'
 }
 
 list_residual_termux_processes() {
@@ -355,6 +370,7 @@ reboot_if_residual_processes_remain() {
     return 0
   fi
 
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))
   log_step 'Processos residuais sobreviveram ao uninstall; reiniciando o dispositivo para concluir a limpeza.'
   termux::prepare_android_reboot_state "$DEVICE_ID"
   adb -s "$DEVICE_ID" reboot >/dev/null 2>&1 || true
@@ -376,6 +392,7 @@ reboot_if_residual_processes_remain() {
   fi
 
   cleanup_project_residue
+  log_ok 'Reboot concluído e limpeza reaplicada após os processos residuais.'
 }
 
 install_apk() {
@@ -438,6 +455,8 @@ apply_post_install_grants() {
     grant_appop_best_effort "$package_name" "WRITE_SETTINGS"
     grant_appop_best_effort "$package_name" "GET_USAGE_STATS"
   done
+
+  log_ok 'Permissões e app-ops pós-instalação aplicados.'
 }
 
 verify_post_install_grants() {
@@ -503,6 +522,7 @@ stage_payloads() {
   run_adb push "$BOOTSTRAP_SOURCE" "$BOOTSTRAP_TARGET" >/dev/null
   run_adb push "$TERMUX_MENU_SOURCE" "$TERMUX_MENU_TARGET" >/dev/null
   run_adb shell chmod 755 "$MAIN_PAYLOAD_TARGET" "$BOOTSTRAP_TARGET" "$TERMUX_MENU_TARGET" >/dev/null
+  log_ok 'Payload principal, bootstrap e menu enviados para /data/local/tmp.'
 }
 
 print_summary() {
@@ -539,6 +559,7 @@ ensure_termux_ready_for_bootstrap() {
     set -e
 
     if [ "$ready_status" -eq 0 ] && printf '%s\n' "$ready_output" | grep -Fq 'TERMUX_READY'; then
+      log_ok 'App Termux pronto para receber o bootstrap.'
       return 0
     fi
 
@@ -570,6 +591,7 @@ run_termux_repo_bootstrap() {
   fi
 
   rm -f "$bootstrap_log"
+  log_ok 'Bootstrap fino executado com sucesso dentro do app Termux.'
 }
 
 log_step 'Validando dependências do host.'
@@ -577,12 +599,15 @@ ensure_host_dependency adb
 ensure_host_dependency curl
 ensure_host_dependency python3
 ensure_termux_send_command_helper
+log_ok 'Dependências do host e helper de bootstrap validados.'
 
 log_step 'Resolvendo o dispositivo ADB alvo.'
 resolve_device
-log_step "Dispositivo selecionado: $DEVICE_ID"
+log_ok "Dispositivo ADB selecionado: $DEVICE_ID"
+
 log_step 'Validando ABI do dispositivo.'
 verify_device_abi
+log_ok 'ABI ARM64 validada para a reinstalação oficial.'
 
 mkdir -p "$DOWNLOAD_DIR"
 
@@ -594,6 +619,7 @@ log_step 'Consultando releases oficiais do ecossistema Termux.'
 fetch_release_json "$TERMUX_APP_API" "$TERMUX_APP_JSON"
 fetch_release_json "$TERMUX_API_API" "$TERMUX_API_JSON"
 fetch_release_json "$TERMUX_X11_API" "$TERMUX_X11_JSON"
+log_ok 'Metadados oficiais de release obtidos com sucesso.'
 
 log_step 'Selecionando os assets oficiais compatíveis com ARM64.'
 TERMUX_APP_URL=$(resolve_asset_url "$TERMUX_APP_JSON" "termux-app" 'termux-app_v.+\+github-debug_arm64-v8a\.apk')
@@ -603,14 +629,17 @@ TERMUX_X11_URL=$(resolve_asset_url "$TERMUX_X11_JSON" "termux-x11" 'app-arm64-v8
 TERMUX_APP_APK="${DOWNLOAD_DIR}/$(basename "$TERMUX_APP_URL")"
 TERMUX_API_APK="${DOWNLOAD_DIR}/$(basename "$TERMUX_API_URL")"
 TERMUX_X11_APK="${DOWNLOAD_DIR}/$(basename "$TERMUX_X11_URL")"
+log_ok 'Assets oficiais ARM64 resolvidos para os três APKs.'
 
 log_step 'Baixando os APKs oficiais no host.'
 download_asset "$TERMUX_APP_URL" "$TERMUX_APP_APK"
 download_asset "$TERMUX_API_URL" "$TERMUX_API_APK"
 download_asset "$TERMUX_X11_URL" "$TERMUX_X11_APK"
+log_ok 'APKs oficiais baixados no host.'
 
 if [ "$DRY_RUN" -eq 1 ]; then
   log_step 'Dry-run ativo: pulando uninstall/install e staging no dispositivo.'
+  log_ok 'Dry-run encerrado sem alterações no dispositivo.'
   print_summary
   exit 0
 fi
@@ -637,6 +666,7 @@ if ! termux::ensure_termux_api_running "$DEVICE_ID" 12; then
     'A reinstalação terminou sem conseguir abrir e confirmar o app Termux:API, o que viola o protocolo obrigatório do projeto.' \
     'Abrir Termux:API manualmente, configurar o app e repetir a etapa se necessário.'
 fi
+log_ok 'Termux:API aberto e confirmado após a reinstalação.'
 
 ensure_termux_ready_for_bootstrap
 run_termux_repo_bootstrap

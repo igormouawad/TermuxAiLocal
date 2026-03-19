@@ -92,6 +92,34 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `Debian/configure_debian_trixie_user.sh`: configuração interna do usuário Debian escolhido, incluindo envs e launchers estável/experimental.
 - `Debian/run_gui_in_debian.sh`: launcher Termux-side genérico para abrir qualquer app GUI do Debian no X11 `:1` já existente.
 
+## Telemetria de execução e progresso
+
+Os scripts agora deixam explícito onde a etapa está rodando, sem adicionar loops extras nem mudar o caminho validado do runtime:
+
+- wrappers host-side mostram:
+  - `[HOST] ...`
+  - `[HOST:OK ...]`
+- payloads executados dentro do app Termux mostram:
+  - `[TERMUX] ...`
+  - `[TERMUX:CMD] ...`
+  - `[TERMUX:OK ...]`
+- payloads internos do Debian mostram:
+  - `[DEBIAN-ROOT] ...`
+  - `[DEBIAN-ROOT:CMD] ...`
+  - `[DEBIAN-ROOT:OK ...]`
+  - `[DEBIAN-USER] ...`
+  - `[DEBIAN-USER:CMD] ...`
+  - `[DEBIAN-USER:OK ...]`
+- falhas continuam no contrato único:
+  - `FALHA DETECTADA`
+
+Objetivo:
+
+- mostrar porcentagem e etapa atual
+- deixar claro o contexto real da execução
+- confirmar sucesso ou falha por etapa
+- sem reduzir a performance do fluxo já validado
+
 ## Função dos scripts
 
 `Install/adb_provision.sh`:
@@ -108,6 +136,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 `Install/adb_reinstall_termux_official.sh`:
 
 - valida `adb`, `curl` e `python3` no host
+- exibe etapas host-side com porcentagem e confirmações explícitas de sucesso
 - prioriza o device conectado diretamente por USB; sem USB, tenta um único alvo por rede/Wi‑Fi
 - ainda exige ABI `arm64-v8a`; em cenários ambíguos, exige seleção explícita
 - resolve por GitHub API as releases oficiais mais recentes de `termux-app`, `termux-api` e `termux-x11`
@@ -206,6 +235,7 @@ Observação importante sobre perfis Android:
 `Install/install_termux_stack.sh`:
 
 - valida que está rodando dentro do app Termux
+- agora marca explicitamente no log o contexto `TERMUX`, o comando da etapa e a confirmação de sucesso
 - fixa antes do primeiro `pkg` o mirror default upstream do Termux em `packages-cf.termux.dev` (`main`, `root`, `x11`) e grava `sources.list`/`etc/termux/mirrors/default`
 - atualiza os pacotes via `pkg`, incluindo `pkg update -y` e `pkg upgrade -y`
 - instala `x11-repo` antes dos demais pacotes
@@ -239,6 +269,7 @@ Observação importante sobre perfis Android:
 `Install/install_termux_repo_bootstrap.sh`:
 
 - valida que está rodando no app Termux recém-instalado
+- agora mostra porcentagem real por etapa e confirmação explícita antes de delegar ao payload principal
 - fixa antes de delegar o mirror default upstream do Termux em `packages-cf.termux.dev` (`main`, `root`, `x11`) para evitar o fluxo interativo de teste de mirrors no primeiro `pkg`
 - valida a presença do payload principal em `/data/local/tmp/install_termux_stack.sh`
 - delega para o payload principal sem duplicar a lógica de instalação/configuração do projeto
@@ -246,6 +277,7 @@ Observação importante sobre perfis Android:
 `Debian/install_debian_trixie_gui.sh`:
 
 - valida que está rodando dentro do app Termux
+- agora sinaliza explicitamente no log que o provisionamento Debian está executando no contexto `TERMUX`
 - atualiza os pacotes via `pkg`
 - garante `proot-distro`, `pulseaudio` e `dbus` no host Termux
 - instala uma instância Debian Trixie dedicada com alias próprio no `proot-distro`
@@ -257,6 +289,7 @@ Observação importante sobre perfis Android:
 `Debian/configure_debian_trixie_root.sh`:
 
 - atualiza o `apt` do Debian Trixie
+- agora marca cada etapa com contexto `DEBIAN-ROOT`, comando executado e confirmação explícita de sucesso
 - instala `sudo`, `dbus-x11`, `pulseaudio`, `mesa-utils`, `mesa-utils-extra`, `x11-apps`, `xauth`, `xterm`, `openbox`, `xfce4-session`, `xfce4-panel`, `xfwm4`, `xfce4-terminal`, `xfce4-settings`, `thunar` e `glmark2`
 - cria ou atualiza o usuário Debian escolhido pelo operador
 - adiciona esse usuário aos grupos Debian relevantes (`sudo`, `audio`, `video`, `render`, `input`, `plugdev`, `users`)
@@ -265,6 +298,7 @@ Observação importante sobre perfis Android:
 `Debian/configure_debian_trixie_user.sh`:
 
 - cria o runtime X11 do usuário em `/tmp/runtime-<usuario>`
+- agora marca cada etapa com contexto `DEBIAN-USER`, comando executado e confirmação explícita de sucesso
 - grava um arquivo de ambiente para `DISPLAY=:1`, `XDG_RUNTIME_DIR`, `TERMUX_X11_WM`, locale e modo de renderização padrão em hardware
 - cria `~/bin/start-xfce-termux-x11`, que sobe o XFCE dentro do Debian e aceita `--wm xfwm4|openbox`
 - cria `~/bin/run-gui-termux` como launcher genérico em hardware com `GALLIUM_DRIVER=virpipe`

@@ -14,9 +14,20 @@ PROOT_SUDO_MODE=""
 PROOT_USER_PASSWORD_HASH=""
 USER_CONFIG_LOCAL=""
 USER_CONFIG_REMOTE=""
+TOTAL_STEPS=4
+CURRENT_STEP=0
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 cleanup() {
@@ -220,11 +231,14 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID="$(termux::resolve_target_device)"
+step_begin 'Coletando usuário Debian, senha e política de sudo no host'
 collect_user_setup_interactively
 validate_proot_user "$PROOT_USER"
 validate_sudo_mode "$PROOT_SUDO_MODE"
 write_user_config_local
+step_ok "Configuração Debian coletada para o usuário ${PROOT_USER}."
 
+step_begin 'Reconstruindo o desktop livre do workspace antes da instalação Debian'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -232,10 +246,13 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'O host não conseguiu garantir o desktop mode livre obrigatório antes da instalação Debian.' \
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
+step_ok 'Desktop livre pronto para o payload Debian.'
 
+step_begin 'Enviando a configuração segura do usuário para o dispositivo'
 USER_CONFIG_REMOTE="/data/local/tmp/debian-user-setup-${DEVICE_ID}-$$.env"
 run_adb push "$USER_CONFIG_LOCAL" "$USER_CONFIG_REMOTE" >/dev/null
 run_adb shell chmod 600 "$USER_CONFIG_REMOTE" >/dev/null
+step_ok 'Arquivo temporário de configuração Debian enviado ao device.'
 
 install_command='bash /data/local/tmp/install_debian_trixie_gui.sh'
 if [ "${#FORWARDED_ARGS[@]}" -gt 0 ]; then
@@ -246,6 +263,7 @@ fi
 install_command="$(termux::append_shell_word "$install_command" --user-config)"
 install_command="$(termux::append_shell_word "$install_command" "$USER_CONFIG_REMOTE")"
 
+step_begin 'Executando o payload Debian no shell real do Termux e validando o helper final'
 bash "${PROJECT_ROOT}/ADB/adb_termux_send_command.sh" \
   --device "$DEVICE_ID" \
   --quiet-output \
@@ -255,9 +273,10 @@ bash "${PROJECT_ROOT}/ADB/adb_termux_send_command.sh" \
 helper_check_output="$(
   bash "${PROJECT_ROOT}/ADB/adb_termux_send_command.sh" \
     --device "$DEVICE_ID" \
-    --expect '/data/data/com.termux/files/home/bin/run-gui-debian' \
-    -- 'command -v run-gui-debian'
+  --expect '/data/data/com.termux/files/home/bin/run-gui-debian' \
+  -- 'command -v run-gui-debian'
 )"
+step_ok 'Payload Debian concluído e helper run-gui-debian validado.'
 
 printf 'Instalação Debian GUI concluída com sucesso no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Helper Debian GUI: %s\n' "$(printf '%s\n' "$helper_check_output" | head -n 1)"

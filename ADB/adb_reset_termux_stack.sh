@@ -8,9 +8,24 @@ source "$(cd -- "${SCRIPT_DIR}/.." && pwd)/lib/termux_common.sh"
 
 FOCUS_APP="termux"
 REBOOT_IF_NEEDED=0
+TOTAL_STEPS=3
+CURRENT_STEP=0
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_note() {
+  termux::progress_note 'HOST' "$1"
 }
 
 run_adb() {
@@ -105,6 +120,7 @@ termux::require_host_command \
 
 DEVICE_ID=$(termux::resolve_target_device)
 
+step_begin 'Encerrando apps Android e resíduos controlados do ecossistema Termux'
 kill_termux_side_processes
 run_adb shell am broadcast -a com.termux.x11.ACTION_STOP -p com.termux.x11 >/dev/null
 run_adb shell cmd activity kill com.termux.x11 >/dev/null
@@ -114,9 +130,12 @@ run_adb shell am force-stop com.termux.x11 >/dev/null
 run_adb shell am force-stop com.termux >/dev/null
 run_adb shell am force-stop com.termux.api >/dev/null
 sleep 1
+step_ok 'Apps principais encerrados e limpeza remota best-effort aplicada.'
 
+step_begin 'Validando clean-state de processos antes da reconstrução do desktop'
 if ! termux::wait_for_no_termux_processes "$DEVICE_ID" 8; then
   if [ "$REBOOT_IF_NEEDED" -eq 1 ]; then
+    step_note 'Processos persistentes detectados; acionando reboot limpo controlado.'
     reboot_device_for_clean_state
   fi
 fi
@@ -128,7 +147,9 @@ if ! termux::wait_for_no_termux_processes "$DEVICE_ID" 8; then
     'O reset terminou com processos residuais do ecossistema Termux, o que invalida o clean-state do projeto.' \
     'Executar novamente com --reboot-if-needed ou eliminar os processos residuais antes de repetir o fluxo.'
 fi
+step_ok "Clean-state confirmado. Processos remanescentes: $(termux::termux_process_count "$DEVICE_ID")"
 
+step_begin 'Reconstruindo o desktop mode livre aprovado do workspace'
 workspace_ready=0
 if termux::ensure_termux_workspace_ready "$DEVICE_ID" "$FOCUS_APP"; then
   workspace_ready=1
@@ -148,6 +169,7 @@ if [ "$workspace_ready" -ne 1 ]; then
     'O reset terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
     'Repetir o reset, preferencialmente com --reboot-if-needed, para reconstruir o layout operacional do projeto.'
 fi
+step_ok 'Desktop livre reconstruído com sucesso no Android.'
 
 printf 'Ecossistema Termux reiniciado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Foco final solicitado: %s\n' "$FOCUS_APP"

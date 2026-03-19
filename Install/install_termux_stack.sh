@@ -55,6 +55,18 @@ progress_bar() {
   printf ']'
 }
 
+progress_percent() {
+  local current="$1"
+  local total="$2"
+
+  if [ "$total" -le 0 ] 2>/dev/null; then
+    printf '100\n'
+    return 0
+  fi
+
+  printf '%s\n' $((current * 100 / total))
+}
+
 safe_slug() {
   printf '%s' "$1" | tr -cs 'A-Za-z0-9._-' '_'
 }
@@ -101,16 +113,18 @@ run_step() {
   local slug
   local status
   local summary
+  local percent
 
   CURRENT_STEP=$((CURRENT_STEP + 1))
   slug="$(safe_slug "$label")"
   LAST_STEP_LOG="${LOG_DIR}/$(printf '%02d' "$CURRENT_STEP")-${slug}.log"
   : > "$LAST_STEP_LOG"
 
-  summary="$(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS") (${CURRENT_STEP}/${TOTAL_STEPS}) ${label}"
+  percent="$(progress_percent "$CURRENT_STEP" "$TOTAL_STEPS")"
+  summary="[TERMUX] $(progress_bar "$CURRENT_STEP" "$TOTAL_STEPS") (${CURRENT_STEP}/${TOTAL_STEPS} ${percent}%) ${label}"
   log_blank_line
   log_line "$summary"
-  log_line "Comando: $(command_text "$@")"
+  log_line "[TERMUX:CMD] $(command_text "$@")"
 
   set +e
   "$@" 2>&1 | tee "$LAST_STEP_LOG" | tee -a "$SCRIPT_LOG"
@@ -125,7 +139,7 @@ run_step() {
       'Corrigir o erro mostrado acima e executar novamente no app Termux.'
   fi
 
-  log_line "Etapa concluída: ${label}"
+  log_line "[TERMUX:OK ${percent}%] Etapa concluída: ${label}"
 }
 
 append_once() {

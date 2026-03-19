@@ -9,6 +9,8 @@ source "$(cd -- "${SCRIPT_DIR}/.." && pwd)/lib/termux_common.sh"
 PROJECT_ROOT="$SCRIPT_DIR"
 PROFILE="${1:-performance}"
 CUSTOM_RESOLUTION="${2:-}"
+TOTAL_STEPS=2
+CURRENT_STEP=0
 
 case "$PROFILE" in
   --help|-h)
@@ -19,6 +21,15 @@ esac
 
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 termux::require_host_command \
@@ -63,6 +74,7 @@ case "$PROFILE" in
     ;;
 esac
 
+step_begin 'Preparando o desktop mode livre antes do ajuste de resolução'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -70,11 +82,14 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'O host não conseguiu garantir o desktop mode livre obrigatório antes do ajuste de resolução.' \
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
+step_ok 'Desktop mode ativo e janelas base prontas.'
 
+step_begin "Aplicando o perfil de resolução ${PROFILE} no Termux:X11"
 bash "${PROJECT_ROOT}/adb_termux_send_command.sh" \
   --device "$DEVICE_ID" \
   --expect "$expected_text" \
   -- "$command_text"
+step_ok "Resolução ${PROFILE} enviada sem erro ao Termux:X11."
 
 printf 'Resolução enviada ao dispositivo %s.\n' "$DEVICE_ID"
 printf 'Linha enviada: %s\n' "$command_text"

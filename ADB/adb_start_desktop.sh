@@ -13,6 +13,8 @@ OPENBOX_PROFILE="openbox-maxperf"
 WM_EXPLICIT=0
 WITH_GPU=0
 MAX_PERF=0
+TOTAL_STEPS=3
+CURRENT_STEP=0
 X11_UI_REMOTE="/sdcard/Download/adb_start_desktop_x11.xml"
 X11_UI_LOCAL="$(mktemp)"
 
@@ -110,8 +112,21 @@ if [ "$MAX_PERF" -eq 1 ]; then
   fi
 fi
 
+if [ "$WITH_GPU" -eq 1 ] && [ "$MAX_PERF" -ne 1 ]; then
+  TOTAL_STEPS=4
+fi
+
 fail() {
   termux::fail "$@"
+}
+
+step_begin() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  termux::progress_step "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
+}
+
+step_ok() {
+  termux::progress_result 'OK' "$CURRENT_STEP" "$TOTAL_STEPS" 'HOST' "$1"
 }
 
 run_termux_helper() {
@@ -177,6 +192,7 @@ termux::require_host_command \
 
 DEVICE_ID=$(termux::resolve_target_device)
 
+step_begin 'Preparando o desktop mode livre e as janelas base do workspace'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
@@ -184,6 +200,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'O host não conseguiu garantir o desktop mode livre obrigatório antes da subida do desktop.' \
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
+step_ok 'Desktop mode ativo e janelas base disponíveis.'
 
 if ! termux::desktop_profile_valid "$DESKTOP_PROFILE"; then
   fail \
@@ -198,6 +215,7 @@ expected_text="$(termux::desktop_start_message "$DESKTOP_PROFILE" "$OPENBOX_PROF
 process_pattern="$(termux::desktop_process_pattern "$DESKTOP_PROFILE" "$XFCE_WM")"
 
 if [ "$WITH_GPU" -eq 1 ] && [ "$MAX_PERF" -ne 1 ]; then
+  step_begin 'Garantindo servidor VirGL antes da sessão gráfica'
   run_termux_helper \
     'start-virgl' \
     'virgl_test_server_android iniciado em modo' \
@@ -206,10 +224,14 @@ if [ "$WITH_GPU" -eq 1 ] && [ "$MAX_PERF" -ne 1 ]; then
   run_termux_helper \
     'termux-stack-status --brief' \
     'VIRGL=ativo'
+  step_ok 'VirGL ativo e confirmado no estado atual da stack.'
 fi
 
+step_begin "Iniciando a sessão ${DESKTOP_PROFILE} no shell real do Termux"
 run_termux_helper "$start_command" "$expected_text"
+step_ok "Sessão ${DESKTOP_PROFILE} iniciada sem erro."
 
+step_begin 'Validando surface X11, processos do desktop e renderer atual'
 if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 12; then
   fail \
     'subida da surface do Termux:X11' \
@@ -225,6 +247,7 @@ if [ "$WITH_GPU" -eq 1 ]; then
     --expect 'GL_RENDERER: virgl' \
     -- 'check-gpu-termux'
 fi
+step_ok 'Surface X11, processos e renderer passaram na validação.'
 
 printf 'Desktop iniciado com sucesso no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Perfil: %s\n' "$DESKTOP_PROFILE"

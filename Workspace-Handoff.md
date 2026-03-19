@@ -59,6 +59,40 @@ Do not treat this file as a historical changelog.
   - `adb_validate_baseline.sh` no longer duplicates desktop mapping logic and no longer keeps two nearly identical Termux command wrappers
   - `workspace_host_menu.sh` and `termux_workspace_menu.sh` now use small generic runner helpers instead of repeating many near-identical handlers
   - `install_termux_stack.sh` had small cleanup for logging helpers
+- Current progress telemetry state:
+  - host-side wrappers now emit contextual progress lines such as:
+    - `[HOST] ...`
+    - `[HOST:OK ...]`
+  - payloads that execute inside the real app Termux now emit:
+    - `[TERMUX] ...`
+    - `[TERMUX:CMD] ...`
+    - `[TERMUX:OK ...]`
+  - Debian payloads now emit their own execution context explicitly:
+    - `[DEBIAN-ROOT] ...`
+    - `[DEBIAN-USER] ...`
+  - failures still converge on the same `FALHA DETECTADA` contract
+  - this refactor was intentionally limited to display/logging so it does not add extra remote probes or change the validated runtime path
+  - latest local validation of this telemetry round passed:
+    - `bash -n`
+    - `shellcheck -S warning`
+    - `git diff --check`
+  - runtime revalidation of this telemetry round has now passed for the main host-side wrappers on the live USB device `<ADB_USB_SERIAL>`:
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux --reboot-if-needed`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop openbox --profile openbox-maxperf --with-gpu --report`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh balanced`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh --dry-run`
+  - issues found and fixed during that runtime round:
+    - `adb_validate_baseline.sh` now accepts both `--profile=openbox-maxperf` and `--profile openbox-maxperf`
+    - `adb_reinstall_termux_official.sh --dry-run` now reports the correct total step count (`7/7` instead of `7/8`)
+  - remaining runtime gap from that same round:
+    - the current Termux runtime on the tablet does not have `run-gui-debian` installed in `~/bin`, so Debian GUI launch could not be revalidated from the host in this round
+    - this is an environment-state gap on the device, not a proven regression in the refactored host-side progress telemetry
 - Important no-regression decision:
   - a live probe confirmed that `adb_termux_send_command.sh --interactive-shell -- 'termux-stack-status --brief'` is still fragile on the current device state
   - therefore `adb_validate_baseline.sh` was intentionally kept on the already validated `run-as+spool` path for its Termux commands
@@ -82,6 +116,8 @@ Do not treat this file as a historical changelog.
     - automatic execution of `bash /data/local/tmp/install_termux_repo_bootstrap.sh`
     - baseline revalidation after reinstall
     - Debian GUI reprovision plus `xeyes` validation after reinstall
+  - latest telemetry refactor validation report:
+    - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-202630/summary.txt`
 
 ## Workspace Identity
 - Root: `~/Documentos/AI/TermuxAiLocal`
@@ -96,6 +132,10 @@ Do not treat this file as a historical changelog.
 - Accepted 3D path: `VirGL plain` with `GALLIUM_DRIVER=virpipe`
 - Display baseline: `Termux:X11` on `DISPLAY=:1`
 - Preferred manual Android desktop layout: freeform trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+- Shared-device coordination rule:
+  - while the operator is using the Android tablet for unrelated work, do not touch the device via ADB
+  - before any new device-side execution, ask the operator to stop using the tablet and restore the approved desktop trio if needed
+  - only then continue host-side automation, testing, or validation
 - Approved bounds on the current tablet (`2560x1600` landscape):
   - `Termux`: `[32,96][1105,742]`
   - `Terminus`: `[32,749][1105,1488]`
@@ -290,6 +330,20 @@ Important:
 - The validated automatic reinstall helper now handles both unstable branches seen in practice:
   - a freshly reinstalled app shell not yet ready for `run-as+spool`
   - orphaned Termux/X11/proot GUI processes that only disappear after a device reboot
+- The current live runtime after the telemetry refactor still validates:
+  - `adb_reset_termux_stack.sh` rebuilt the freeform desktop layout successfully
+  - `adb_start_desktop.sh` showed `[HOST]` / `[HOST:OK]` on the host and preserved the expected Termux-side output
+  - `adb_set_x11_resolution.sh` correctly switched between `balanced` (`1920x1080`) and `performance` (`1280x720`)
+  - `adb_run_x11_command.sh` successfully launched a lightweight `aterm` in X11 with the new progress output
+  - `adb_consolidate_freeform_desktop.sh --restart --focus ssh` restored:
+    - `Termux`: task `155` in `[32,96][1105,742]`
+    - `Termux:X11`: task `156` in `[1129,96][2528,944]`
+    - `Terminus`: task `157` in `[32,749][1105,1488]`
+- Current Debian GUI runtime gap on the live tablet:
+  - `run-gui-debian` is currently absent from `~/bin` in the active Termux runtime
+  - direct host launch therefore failed with:
+    - `/data/data/com.termux/files/usr/bin/bash: line 1: run-gui-debian: command not found`
+  - if Debian GUI needs to be revalidated again in this device state, reinstall or reapply the Debian GUI host flow first and collect/operator-confirm the Debian credentials as required
 - The current payloads also ship the Termux-side interactive menu:
   - source in repo: `~/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh`
   - installed helper in Termux: `~/bin/termux-workspace-menu`
@@ -303,7 +357,7 @@ Important:
 ## Current Validated Baseline State
 - Baseline post-reinstall validation passed.
 - Latest authoritative baseline report:
-  - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-105623/summary.txt`
+  - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-202630/summary.txt`
 - Expected success markers:
   - `status=success`
   - `Display unificado: :1`

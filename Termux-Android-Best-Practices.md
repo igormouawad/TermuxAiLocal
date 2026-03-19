@@ -10,10 +10,12 @@ This note captures the cleaned-up flow for the Termux/X11 stack, including the h
 - After each non-reinstall restart of the GUI pair, restore the approved desktop mode/freeform layout: `Termux` top-left, `Termux:X11` on the right, SSH client bottom-left, and `Termux:API` kept off the visible desktop.
 - The reset helper now also performs a best-effort cleanup of managed Openbox/XFCE/VirGL/DBus leftovers inside the Termux app context, so a new test starts from a genuinely clean GUI state.
 - When `run-as com.termux` is available (debug APK), use `ADB/adb_termux_send_command.sh` with structured spool transport. For X11/GPU-sensitive helpers, prefer the interactive-shell spool mode so the command executes in the real Termux shell namespace while the host still receives stdout/stderr/exit code.
+- If the tablet is being used interactively for unrelated work, pause host automation first. Before any new ADB/device action, ask the operator to stop using the tablet and restore the approved desktop trio if needed.
 
 ## 2. Automation and status tracking
 
 - The Termux payload installs `termux-stack-status`, `start-openbox`, `start-openbox-stable`, `start-openbox-maxperf`, `start-openbox-compat`, `start-openbox-vulkan-exp`, `start-xfce-x11`, `start-virgl`, `stop-virgl`, `start-maxperf-x11`, `run-in-x11`, `run-glmark2-x11` and other helpers. Each helper pumps status lines into Termux so you can watch stages, errors and the progress bar from the terminal.
+- Host wrappers now emit `[HOST]` / `[HOST:OK ...]`; Termux payloads emit `[TERMUX]` / `[TERMUX:CMD]` / `[TERMUX:OK ...]`; Debian payloads emit `[DEBIAN-ROOT]` or `[DEBIAN-USER]`. This makes it explicit where the current stage is executing without changing the validated runtime path.
 - `termux-stack-status --brief` now prints `X11`, `VIRGL`, `MODE`, `DESKTOP`, `WM`, `RES` and `PROFILE` plus the `DISPLAY`. The default (non-brief) output adds explicit lines for `virgl-mode`, `current-profile`, `default-resolution` and `default-profile`.
 - The host scripts capture these outputs via `adb_termux_send_command` and stream them back to the host automation logs so failures are easier to trace.
 - `virgl_test_server_android` is relaunchable with `start-virgl plain|gl|vulkan`; the helper now restricts `LD_LIBRARY_PATH` to the package-private `virglrenderer-android` directory, which keeps `libepoxy.so`/`libvirglrenderer.so` private without accidentally pulling Mesa's `libEGL/libGLES` software stack into the host server.
