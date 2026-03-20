@@ -265,6 +265,7 @@ Do not treat this file as a historical changelog.
   - `wm shell desktopmode canCreateDesk` and `getActivateDeskId` are not reliable on this build and returned `Not implemented` / invalid-command behavior during testing
   - canonical helper added for this Samsung desktop mode:
     - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_desktop_mode.sh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package PACKAGE`
   - validated helper actions:
     - `status`
     - `on`
@@ -279,6 +280,30 @@ Do not treat this file as a historical changelog.
     - `open --package com.android.settings --bounds '150 120 1200 900'` opened `Configurações` as `FREEFORM`
     - `resize --package com.android.settings --bounds '220 160 1280 980'` updated the real task bounds
     - `focus --package com.server.auditor.ssh.client` returned focus to `TerminalActivity` without relaunching a different screen of the app
+  - current higher-level opening policy:
+    - desktop mode is mandatory for host-side opening of visible Android apps
+    - the policy name is `Foco grande`
+    - the launched app becomes the main window
+    - `Termux`, `Termux:X11` and the SSH client stay visible as compact auxiliaries
+    - the layout now measures the real usable desktop area from `StatusBar` + `TaskbarWindow` insets instead of assuming the raw `2560x1600` display
+    - on this Samsung build, several freeform windows clamp to an effective minimum size of about `646x646`; because of that, the helper no longer tries to stack three auxiliaries vertically when there is already one extra visible app
+    - with 1 extra app visible, the validated arrangement is:
+      - `Termux:X11` top-left
+      - `Termux` bottom-left
+      - launched app large on the top-right
+      - SSH bottom-right-left
+      - extra visible app bottom-right-right
+    - this keeps all 5 allowed desktop tasks visible and inside the usable area above the taskbar
+    - default final focus is now contextual:
+      - on the workstation, the launched app keeps focus by default
+      - when Codex is running over SSH from the tablet (`Terminus`), the app still opens large, but focus returns to the SSH client by default so the operator keeps control
+    - latest Wi-Fi revalidation from the live `Terminus` SSH session confirmed the usable desktop area as `[0 72 2560 1498]`, with the final stable 5-window bounds:
+      - `Termux:X11` `[32,96][860,806]`
+      - `Termux` `[32,842][860,1488]`
+      - primary app `[892,96][2528,806]`
+      - SSH `[892,842][1702,1488]`
+      - extra app `[1718,842][2528,1488]`
+    - after that validation, the requested save point for the next continuation is: workstation Linux host, preferred transport `USB`
   - latest direct USB revalidation on `<ADB_USB_SERIAL>` confirmed:
     - `status -> off -> on -> status` passed
     - the current live session uses `activeDesk=100`, not `91`

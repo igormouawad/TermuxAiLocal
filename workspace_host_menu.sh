@@ -151,6 +151,10 @@ handler_restart_freeform_desktop() {
   run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --restart --focus ssh
 }
 
+handler_open_settings_desktop() {
+  run_workspace_script "ADB/adb_open_desktop_app.sh" --package com.android.settings
+}
+
 handler_desktop_mode_status() {
   run_workspace_script "ADB/adb_desktop_mode.sh" status
 }
@@ -316,6 +320,15 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "handler_restart_freeform_desktop" \
     "1" \
     "Reconstrói o layout livre aprovado; use com cautela porque o cliente SSH Android pode não retomar a sessão sozinho."
+
+  add_action \
+    "desktop_open_settings" \
+    "ADB / Termux" \
+    "Abrir Configurações no desktop" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package com.android.settings" \
+    "handler_open_settings_desktop" \
+    "0" \
+    "Exemplo canônico de app Android aberto em desktop mode com layout de foco grande."
 
   add_action \
     "desktop_mode_status" \

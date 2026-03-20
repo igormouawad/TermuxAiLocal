@@ -103,6 +103,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
 - `ADB/adb_start_desktop.sh`: subida host-side do desktop suportado.
 - `ADB/adb_consolidate_freeform_desktop.sh`: consolida o trio `Termux` + `Termux:X11` + cliente SSH em desktop mode/freeform, com layout reprodutível em janelas e opção de fechar/reabrir tudo.
+- `ADB/adb_open_desktop_app.sh`: entrypoint canônico para abrir um app Android visível em desktop mode, preservando o trio base e aplicando o layout `Foco grande`.
 - `ADB/adb_run_x11_command.sh`: execução remota de apps e scripts no display X11 `:1`.
 - `ADB/adb_stop_termux_x11.sh`: encerra a app Android `Termux:X11` por `adb` sem resetar o ecossistema inteiro.
 - `ADB/adb_set_x11_resolution.sh`: aplicação host-side dos perfis de resolução do Termux:X11.
@@ -239,6 +240,30 @@ Objetivo:
   - `Termux:X11` à direita com altura ajustada ao conteúdo útil, sem sobra preta acima/abaixo no arranjo validado
 - com `--restart`, fecha esses três apps e recria o layout completo para teste de reabertura
 - se a sessão gráfica estiver inativa, sobe `Openbox` com o perfil pedido sem voltar a layouts legados do Android
+
+`ADB/adb_open_desktop_app.sh`:
+
+- é o caminho canônico para abrir apps Android visíveis durante o trabalho host-side
+- sempre garante `desktop mode` antes da abertura
+- mantém `Termux`, `Termux:X11` e o cliente SSH visíveis como trio auxiliar
+- aplica a política visual `Foco grande`:
+  - app recém-aberto como janela principal
+  - trio base compactado em janelas auxiliares
+  - a área útil real do desktop é medida a partir das insets da `StatusBar` e da `TaskbarWindow`, então o layout não usa mais `2560x1600` bruto
+  - quando já existe 1 app extra visível, o helper usa um arranjo de 5 janelas compatível com o limite real do Samsung:
+    - `X11` no topo esquerdo
+    - `Termux` embaixo à esquerda
+    - app principal grande no topo direito
+    - SSH e o app extra lado a lado na faixa inferior direita
+  - isso evita que janelas mínimas do Samsung caiam atrás da taskbar ou se sobreponham fora da área útil
+- foco final padrão:
+  - em contexto local no workstation, o foco final padrão continua sendo o app recém-aberto
+  - quando o operador está no próprio tablet via `Terminus`, o helper mantém o foco final no SSH por padrão para preservar o controle da sessão
+- exemplo:
+
+```bash
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package com.android.settings
+```
 
 Observação importante sobre transporte host-side:
 
