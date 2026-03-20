@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Status inicial da stack",
+      "command": "termux-stack-status --brief",
+      "severity": "info"
+    },
+    {
+      "name": "Subir Openbox canônico",
+      "command": "start-openbox-x11 --profile openbox-maxperf",
+      "timeout": 45,
+      "severity": "error"
+    },
+    {
+      "name": "Status final da stack",
+      "command": "termux-stack-status --brief",
+      "severity": "info"
+    }
+  ]
+}

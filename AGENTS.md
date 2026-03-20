@@ -18,6 +18,7 @@ Before doing substantial work, read these files in this order:
 3. [Termux-Android-Best-Practices.md](~/Documentos/AI/TermuxAiLocal/Termux-Android-Best-Practices.md)
 4. [Workspace-Study-Base.md](~/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md) only when the task explicitly involves external links, technical research, source comparison, or documentation study
 5. [Local-Model-System-Prompt.md](~/Documentos/AI/TermuxAiLocal/Local-Model-System-Prompt.md) only when editing or tuning the local model prompt, preset, or inference behavior itself
+6. [Audit/README.md](~/Documentos/AI/TermuxAiLocal/Audit/README.md) only when the task explicitly involves the audit runner, JSON profiles, mirrored session events, or the Termux visual watcher UI
 
 Exceptions that override the generic reading order above:
 - In Continue Agent, for a natural request like `fluxo diario limpo completo do workspace`, the first actions must be:

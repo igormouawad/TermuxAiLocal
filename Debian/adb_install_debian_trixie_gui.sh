@@ -17,6 +17,7 @@ USER_CONFIG_STAGE=""
 USER_CONFIG_REMOTE=""
 TOTAL_STEPS=4
 CURRENT_STEP=0
+AUDIT_OWNER=0
 
 fail() {
   termux::fail "$@"
@@ -32,6 +33,8 @@ step_ok() {
 }
 
 cleanup() {
+  local exit_code=$?
+
   if [ -n "${USER_CONFIG_LOCAL:-}" ] && [ -f "$USER_CONFIG_LOCAL" ]; then
     rm -f "$USER_CONFIG_LOCAL"
   fi
@@ -42,6 +45,10 @@ cleanup() {
 
   if [ -n "${USER_CONFIG_REMOTE:-}" ] && [ -n "${DEVICE_ID:-}" ]; then
     adb -s "$DEVICE_ID" shell "run-as com.termux sh -lc $(printf '%q' "rm -f $USER_CONFIG_REMOTE")" >/dev/null 2>&1 || true
+  fi
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
   fi
 }
 
@@ -257,6 +264,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID="$(termux::resolve_target_device)"
+termux::audit_session_begin 'Instalação síncrona do Debian GUI' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 step_begin 'Coletando usuário Debian, senha e política de sudo no host'
 collect_user_setup_interactively
 validate_proot_user "$PROOT_USER"
@@ -273,6 +282,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
 step_ok 'Desktop livre pronto para o payload Debian.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 step_begin 'Enviando a configuração segura do usuário para o dispositivo'
 USER_CONFIG_STAGE="/data/local/tmp/debian-user-setup-stage-${DEVICE_ID}-$$.env"

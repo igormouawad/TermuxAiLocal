@@ -16,6 +16,17 @@ TASK_ID=''
 BOUNDS_TEXT=''
 FOCUS_AFTER=1
 FORCE_FREEFORM=1
+AUDIT_OWNER=0
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 usage() {
   cat <<'EOF'
@@ -155,6 +166,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID="$(termux::resolve_target_device "$DEVICE_ID")"
+termux::audit_session_begin 'Controle do desktop mode Samsung' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 run_adb() {
   termux::adb_run \

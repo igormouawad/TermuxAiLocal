@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
 TERMUX_WORKSPACE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+TERMUXAI_AUDIT_HOST_ROOT_DEFAULT="${TERMUX_WORKSPACE_ROOT}/Audit/runs"
+TERMUXAI_AUDIT_DEVICE_ROOT_DEFAULT="/data/data/com.termux/files/home/.cache/termux-ai-local/audit/sessions"
+TERMUXAI_HOST_CACHE_ROOT_DEFAULT="${XDG_CACHE_HOME:-$HOME/.cache}/termux-ai-local"
+TERMUXAI_ADB_CACHE_DIR_DEFAULT="${TERMUXAI_HOST_CACHE_ROOT_DEFAULT}/adb"
 
 termux::stderr() {
   printf '%s\n' "$*" >&2
@@ -17,6 +21,7 @@ termux::print_failure() {
   printf -- '- erro: %s\n' "$error_text" >&2
   printf -- '- impacto: %s\n' "$impact_text" >&2
   printf -- '- próximo passo recomendado: %s\n' "$next_step_text" >&2
+  termux::audit_failure "$command_text" "$error_text" "$impact_text" "$next_step_text"
 }
 
 termux::fail() {
@@ -69,6 +74,7 @@ termux::progress_step() {
     "$total" \
     "$percent" \
     "$label"
+  termux::audit_step_begin "$current" "$total" "$context" "$label" "$percent"
 }
 
 termux::progress_result() {
@@ -81,6 +87,7 @@ termux::progress_result() {
 
   percent="$(termux::progress_percent "$current" "$total")"
   printf '[%s:%s %s%%] %s\n' "$context" "$status_label" "$percent" "$message"
+  termux::audit_step_finish "$status_label" "$current" "$total" "$context" "$message" "$percent"
 }
 
 termux::progress_note() {
@@ -88,6 +95,476 @@ termux::progress_note() {
   local message="$2"
 
   printf '[%s] %s\n' "$context" "$message"
+  termux::audit_note "$context" "$message"
+}
+
+termux::audit_enabled() {
+  case "${TERMUXAI_AUDIT:-1}" in
+    0|false|FALSE|no|NO)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+termux::audit_timestamp() {
+  date '+%Y-%m-%dT%H:%M:%S%z'
+}
+
+termux::audit_slug() {
+  printf '%s' "$1" | tr -cs 'A-Za-z0-9._-' '_'
+}
+
+termux::audit_json_escape() {
+  local value="${1-}"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  printf '%s' "$value"
+}
+
+termux::audit_append_host_event() {
+  local json_line="$1"
+
+  if [ -z "${TERMUXAI_AUDIT_EVENTS_FILE:-}" ]; then
+    return 0
+  fi
+
+  printf '%s\n' "$json_line" >> "$TERMUXAI_AUDIT_EVENTS_FILE"
+}
+
+termux::audit_append_host_step_log() {
+  local text="$1"
+  local ts
+
+  if [ -z "${TERMUXAI_AUDIT_CURRENT_STEP_LOG:-}" ]; then
+    return 0
+  fi
+
+  ts="$(termux::audit_timestamp)"
+  printf '[%s] %s\n' "$ts" "$text" >> "$TERMUXAI_AUDIT_CURRENT_STEP_LOG"
+}
+
+termux::audit_mirror_remote_append() {
+  local file_path="$1"
+  local payload="$2"
+  local remote_command
+
+  if [ -z "${TERMUXAI_AUDIT_DEVICE_ID:-}" ] || [ -z "${TERMUXAI_AUDIT_DEVICE_DIR:-}" ] || [ -z "${TERMUXAI_AUDIT_DEVICE_READY:-}" ]; then
+    return 0
+  fi
+
+  printf -v remote_command 'mkdir -p %q && payload=%q && printf '\''%%s\n'\'' "$payload" >> %q' \
+    "$TERMUXAI_AUDIT_DEVICE_DIR" \
+    "$payload" \
+    "$file_path"
+
+  adb -s "${TERMUXAI_AUDIT_DEVICE_ID}" shell "run-as com.termux sh -lc $(printf '%q' "$remote_command")" >/dev/null 2>&1 || true
+}
+
+termux::audit_emit_record() {
+  local event_type="$1"
+  local level="$2"
+  local message="$3"
+  local extra_json="${4:-}"
+  local ts json_line
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  ts="$(termux::audit_timestamp)"
+  json_line="{\"ts\":\"$(termux::audit_json_escape "$ts")\",\"type\":\"$(termux::audit_json_escape "$event_type")\",\"level\":\"$(termux::audit_json_escape "$level")\",\"message\":\"$(termux::audit_json_escape "$message")\",\"session_id\":\"$(termux::audit_json_escape "${TERMUXAI_AUDIT_SESSION_ID:-}")\""
+  if [ -n "$extra_json" ]; then
+    json_line="${json_line},${extra_json}"
+  fi
+  json_line="${json_line}}"
+
+  termux::audit_append_host_event "$json_line"
+  termux::audit_mirror_remote_append "${TERMUXAI_AUDIT_DEVICE_EVENTS_FILE:-}" "$json_line"
+}
+
+termux::audit_step_begin() {
+  local current="$1"
+  local total="$2"
+  local context="$3"
+  local label="$4"
+  local percent="$5"
+  local seq step_log
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  seq=$(( ${TERMUXAI_AUDIT_STEP_SEQ:-0} + 1 ))
+  TERMUXAI_AUDIT_STEP_SEQ="$seq"
+  export TERMUXAI_AUDIT_STEP_SEQ
+  export TERMUXAI_AUDIT_CURRENT_STEP_SEQ="$seq"
+  step_log="${TERMUXAI_AUDIT_SESSION_DIR}/step-$(printf '%04d' "$seq")-$(termux::audit_slug "$context-$label").log"
+  : > "$step_log"
+  export TERMUXAI_AUDIT_CURRENT_STEP_LOG="$step_log"
+
+  termux::audit_append_host_step_log "ETAPA ${seq} | contexto=${context} | etapa-local=${current}/${total} | ${label}"
+  termux::audit_emit_record \
+    "step_start" \
+    "info" \
+    "${label}" \
+    "\"seq\":${seq},\"current\":${current},\"total\":${total},\"percent\":${percent},\"context\":\"$(termux::audit_json_escape "$context")\",\"label\":\"$(termux::audit_json_escape "$label")\",\"name\":\"$(termux::audit_json_escape "$label")\",\"log_path\":\"$(termux::audit_json_escape "$step_log")\""
+}
+
+termux::audit_step_finish() {
+  local status_label="$1"
+  local current="$2"
+  local total="$3"
+  local context="$4"
+  local message="$5"
+  local percent="$6"
+  local seq status_value
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ] || [ -z "${TERMUXAI_AUDIT_CURRENT_STEP_SEQ:-}" ]; then
+    return 0
+  fi
+
+  seq="${TERMUXAI_AUDIT_CURRENT_STEP_SEQ}"
+  case "$status_label" in
+    OK|PASS|SUCCESS)
+      status_value="success"
+      ;;
+    SKIP|SKIPPED)
+      status_value="skipped"
+      ;;
+    *)
+      status_value="failed"
+      ;;
+  esac
+
+  termux::audit_append_host_step_log "RESULTADO ${seq} | status=${status_value} | ${message}"
+  termux::audit_emit_record \
+    "step_finish" \
+    "$([ "$status_value" = "success" ] && printf 'info' || printf 'error')" \
+    "$message" \
+    "\"seq\":${seq},\"current\":${current},\"total\":${total},\"percent\":${percent},\"context\":\"$(termux::audit_json_escape "$context")\",\"status\":\"$(termux::audit_json_escape "$status_value")\""
+  unset TERMUXAI_AUDIT_CURRENT_STEP_SEQ TERMUXAI_AUDIT_CURRENT_STEP_LOG
+}
+
+termux::audit_note() {
+  local context="$1"
+  local message="$2"
+  local extra_json=""
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  if [ -n "${TERMUXAI_AUDIT_CURRENT_STEP_SEQ:-}" ]; then
+    extra_json="\"seq\":${TERMUXAI_AUDIT_CURRENT_STEP_SEQ},\"context\":\"$(termux::audit_json_escape "$context")\""
+  else
+    extra_json="\"context\":\"$(termux::audit_json_escape "$context")\""
+  fi
+  termux::audit_append_host_step_log "NOTA | ${message}"
+  termux::audit_emit_record "note" "info" "$message" "$extra_json"
+}
+
+termux::audit_failure() {
+  local command_text="$1"
+  local error_text="$2"
+  local impact_text="$3"
+  local next_step_text="$4"
+  local extra_json=""
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  if [ -n "${TERMUXAI_AUDIT_CURRENT_STEP_SEQ:-}" ]; then
+    extra_json="\"seq\":${TERMUXAI_AUDIT_CURRENT_STEP_SEQ},"
+  fi
+  extra_json="${extra_json}\"command\":\"$(termux::audit_json_escape "$command_text")\",\"error\":\"$(termux::audit_json_escape "$error_text")\",\"impact\":\"$(termux::audit_json_escape "$impact_text")\",\"next_step\":\"$(termux::audit_json_escape "$next_step_text")\""
+  termux::audit_append_host_step_log "FALHA | comando=${command_text}"
+  termux::audit_append_host_step_log "FALHA | erro=${error_text}"
+  termux::audit_emit_record "failure" "error" "$error_text" "$extra_json"
+}
+
+termux::audit_command() {
+  local command_text="$1"
+  local extra_json=""
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  if [ -n "${TERMUXAI_AUDIT_CURRENT_STEP_SEQ:-}" ]; then
+    extra_json="\"seq\":${TERMUXAI_AUDIT_CURRENT_STEP_SEQ},"
+  fi
+  extra_json="${extra_json}\"command\":\"$(termux::audit_json_escape "$command_text")\""
+  termux::audit_append_host_step_log "CMD | ${command_text}"
+  termux::audit_emit_record "command" "info" "$command_text" "$extra_json"
+}
+
+termux::audit_command_result() {
+  local rc="$1"
+  local output_text="$2"
+  local extra_json=""
+  local message
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  if [ -n "$output_text" ]; then
+    termux::audit_append_host_step_log "$output_text"
+  fi
+
+  message="$output_text"
+  if [ -n "$message" ]; then
+    message="$(printf '%s\n' "$message" | tail -n 20)"
+  else
+    message="Comando concluído sem saída textual."
+  fi
+
+  if [ -n "${TERMUXAI_AUDIT_CURRENT_STEP_SEQ:-}" ]; then
+    extra_json="\"seq\":${TERMUXAI_AUDIT_CURRENT_STEP_SEQ},"
+  fi
+  extra_json="${extra_json}\"return_code\":${rc}"
+  termux::audit_emit_record \
+    "command_result" \
+    "$([ "$rc" -eq 0 ] 2>/dev/null && printf 'info' || printf 'error')" \
+    "$message" \
+    "$extra_json"
+}
+
+termux::audit_manifest_write() {
+  local label="$1"
+  local script_path="$2"
+  local device_id="${3:-}"
+  local manifest_path="$TERMUXAI_AUDIT_MANIFEST_FILE"
+
+  cat > "$manifest_path" <<EOF
+{
+  "app": "TermuxAiLocal Audit Runner",
+  "version": "2026.03",
+  "mode": "mirror",
+  "session_id": "$(termux::audit_json_escape "${TERMUXAI_AUDIT_SESSION_ID}")",
+  "label": "$(termux::audit_json_escape "$label")",
+  "session_label": "$(termux::audit_json_escape "$label")",
+  "script_path": "$(termux::audit_json_escape "$script_path")",
+  "cwd": "$(termux::audit_json_escape "$(pwd)")",
+  "host": "$(termux::audit_json_escape "$(hostname)")",
+  "started_at": "$(termux::audit_json_escape "$(termux::audit_timestamp)")",
+  "device_id": "$(termux::audit_json_escape "$device_id")",
+  "step_count": 0
+}
+EOF
+}
+
+termux::audit_launch_device_watch() {
+  local device_id="$1"
+  local launcher_name
+  local launcher_path
+  local watch_command
+  local watcher_started
+  local kill_previous
+
+  if [ -z "$device_id" ]; then
+    return 0
+  fi
+
+  launcher_name="${TERMUXAI_AUDIT_DEVICE_LAUNCHER_NAME:-termux-audit-watch-current}"
+  launcher_path="/data/data/com.termux/files/home/bin/${launcher_name}"
+  if ! adb -s "$device_id" shell "run-as com.termux test -x $launcher_path" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  kill_previous=$'pids="$(ps -ef | awk \'/audit_runner\\.py watch/ && $0 !~ /awk/ {print $2}\')"\nif [ -n "$pids" ]; then\n  kill $pids >/dev/null 2>&1 || true\n  sleep 0.2\nfi'
+  adb -s "$device_id" shell "run-as com.termux sh -lc $(printf '%q' "$kill_previous")" >/dev/null 2>&1 || true
+
+  watch_command="bin/${launcher_name}"
+  TERMUXAI_AUDIT=0 TERMUXAI_AUDIT_SKIP_UI=1 bash "${TERMUX_WORKSPACE_ROOT}/ADB/adb_termux_send_command.sh" \
+    --device "$device_id" \
+    --force-ui \
+    --no-focus \
+    -- "$watch_command" >/dev/null 2>&1 || true
+
+  watcher_started=0
+  for _ in 1 2 3 4 5; do
+    if adb -s "$device_id" shell "run-as com.termux sh -lc 'ps -ef | grep -F \"audit_runner.py watch ${TERMUXAI_AUDIT_SESSION_ID}\" | grep -v grep >/dev/null'" >/dev/null 2>&1; then
+      watcher_started=1
+      break
+    fi
+    sleep 0.1
+  done
+
+  [ "$watcher_started" -eq 1 ] || true
+}
+
+termux::audit_attach_device() {
+  local device_id="$1"
+  local stage_path
+  local launcher_stage_path
+  local launcher_local_path
+  local events_stage_path
+  local remote_install
+  local launcher_path
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ] || [ -n "${TERMUXAI_AUDIT_DEVICE_READY:-}" ]; then
+    return 0
+  fi
+
+  export TERMUXAI_AUDIT_DEVICE_ID="$device_id"
+  export TERMUXAI_AUDIT_DEVICE_DIR="${TERMUXAI_AUDIT_DEVICE_ROOT:-${TERMUXAI_AUDIT_DEVICE_ROOT_DEFAULT}}/${TERMUXAI_AUDIT_SESSION_ID}"
+  export TERMUXAI_AUDIT_DEVICE_EVENTS_FILE="${TERMUXAI_AUDIT_DEVICE_DIR}/events.jsonl"
+  export TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE="${TERMUXAI_AUDIT_DEVICE_DIR}/manifest.json"
+  export TERMUXAI_AUDIT_DEVICE_LAUNCHER_NAME="termux-audit-watch-current"
+  launcher_path="/data/data/com.termux/files/home/bin/${TERMUXAI_AUDIT_DEVICE_LAUNCHER_NAME}"
+
+  stage_path="/data/local/tmp/${TERMUXAI_AUDIT_SESSION_ID}-manifest.json"
+  launcher_stage_path="/data/local/tmp/${TERMUXAI_AUDIT_SESSION_ID}-watch.sh"
+  launcher_local_path="$(mktemp)"
+  cat > "$launcher_local_path" <<EOF
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+export HOME="/data/data/com.termux/files/home"
+export PREFIX="/data/data/com.termux/files/usr"
+export TMPDIR="\${TMPDIR:-/data/data/com.termux/files/usr/tmp}"
+export PATH="\${HOME}/bin:\${PREFIX}/bin:/system/bin:/system/xbin"
+export LD_LIBRARY_PATH="\${PREFIX}/lib"
+exec "\${HOME}/bin/termux-audit-watch" ${TERMUXAI_AUDIT_DEVICE_DIR} --final-delay 8
+EOF
+  adb -s "$device_id" push "${TERMUXAI_AUDIT_MANIFEST_FILE}" "$stage_path" >/dev/null 2>&1 || {
+    rm -f "$launcher_local_path"
+    return 0
+  }
+  adb -s "$device_id" push "$launcher_local_path" "$launcher_stage_path" >/dev/null 2>&1 || {
+    rm -f "$launcher_local_path"
+    return 0
+  }
+  rm -f "$launcher_local_path"
+  if [ -s "${TERMUXAI_AUDIT_EVENTS_FILE:-}" ]; then
+    events_stage_path="/data/local/tmp/${TERMUXAI_AUDIT_SESSION_ID}-events.jsonl"
+    adb -s "$device_id" push "${TERMUXAI_AUDIT_EVENTS_FILE}" "$events_stage_path" >/dev/null 2>&1 || events_stage_path=""
+  fi
+  adb -s "$device_id" shell chmod 644 "$stage_path" >/dev/null 2>&1 || true
+  adb -s "$device_id" shell chmod 755 "$launcher_stage_path" >/dev/null 2>&1 || true
+  if [ -n "$events_stage_path" ]; then
+    adb -s "$device_id" shell chmod 644 "$events_stage_path" >/dev/null 2>&1 || true
+    printf -v remote_install 'mkdir -p %q && install -m 600 %q %q && install -m 600 %q %q && install -m 755 %q %q' \
+      "${TERMUXAI_AUDIT_DEVICE_DIR}" \
+      "$stage_path" \
+      "${TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE}" \
+      "$events_stage_path" \
+      "${TERMUXAI_AUDIT_DEVICE_EVENTS_FILE}" \
+      "$launcher_stage_path" \
+      "$launcher_path"
+  else
+    printf -v remote_install 'mkdir -p %q && install -m 600 %q %q && : > %q && install -m 755 %q %q' \
+      "${TERMUXAI_AUDIT_DEVICE_DIR}" \
+      "$stage_path" \
+      "${TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE}" \
+      "${TERMUXAI_AUDIT_DEVICE_EVENTS_FILE}" \
+      "$launcher_stage_path" \
+      "$launcher_path"
+  fi
+  adb -s "$device_id" shell "run-as com.termux sh -lc $(printf '%q' "$remote_install")" >/dev/null 2>&1 || return 0
+  adb -s "$device_id" shell rm -f "$stage_path" "$launcher_stage_path" ${events_stage_path:+"$events_stage_path"} >/dev/null 2>&1 || true
+
+  export TERMUXAI_AUDIT_DEVICE_READY=1
+}
+
+termux::audit_reset_device_attachment() {
+  unset TERMUXAI_AUDIT_DEVICE_ID TERMUXAI_AUDIT_DEVICE_DIR TERMUXAI_AUDIT_DEVICE_READY
+  unset TERMUXAI_AUDIT_DEVICE_EVENTS_FILE TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE TERMUXAI_AUDIT_DEVICE_LAUNCHER_NAME
+}
+
+termux::audit_reattach_device() {
+  local device_id="$1"
+
+  if ! termux::audit_enabled || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ] || [ -z "$device_id" ]; then
+    return 0
+  fi
+
+  termux::audit_reset_device_attachment
+  termux::audit_attach_device "$device_id"
+}
+
+termux::audit_session_begin() {
+  local label="$1"
+  local script_path="${2:-$0}"
+  local device_id="${3:-}"
+  local host_root
+
+  if ! termux::audit_enabled; then
+    export TERMUXAI_AUDIT_SESSION_OWNER=0
+    return 0
+  fi
+
+  if [ -n "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    export TERMUXAI_AUDIT_SESSION_OWNER=0
+    if [ -n "$device_id" ] && [ -z "${TERMUXAI_AUDIT_DEVICE_READY:-}" ]; then
+      termux::audit_attach_device "$device_id"
+    fi
+    return 0
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    export TERMUXAI_AUDIT_SESSION_OWNER=0
+    return 0
+  fi
+
+  host_root="${TERMUXAI_AUDIT_HOST_ROOT:-${TERMUXAI_AUDIT_HOST_ROOT_DEFAULT}}"
+  mkdir -p "$host_root"
+
+  TERMUXAI_AUDIT_SESSION_ID="mirror-$(date +%Y%m%d-%H%M%S)-$$"
+  export TERMUXAI_AUDIT_SESSION_ID
+  export TERMUXAI_AUDIT_SESSION_DIR="${host_root}/${TERMUXAI_AUDIT_SESSION_ID}"
+  export TERMUXAI_AUDIT_EVENTS_FILE="${TERMUXAI_AUDIT_SESSION_DIR}/events.jsonl"
+  export TERMUXAI_AUDIT_MANIFEST_FILE="${TERMUXAI_AUDIT_SESSION_DIR}/manifest.json"
+  export TERMUXAI_AUDIT_SUMMARY_FILE="${TERMUXAI_AUDIT_SESSION_DIR}/summary.json"
+  export TERMUXAI_AUDIT_SUMMARY_MD_FILE="${TERMUXAI_AUDIT_SESSION_DIR}/summary.md"
+  export TERMUXAI_AUDIT_REPORT_TXT_FILE="${TERMUXAI_AUDIT_SESSION_DIR}/report.txt"
+  export TERMUXAI_AUDIT_LABEL="$label"
+  export TERMUXAI_AUDIT_STEP_SEQ=0
+  export TERMUXAI_AUDIT_SESSION_OWNER=1
+  mkdir -p "${TERMUXAI_AUDIT_SESSION_DIR}"
+  : > "${TERMUXAI_AUDIT_EVENTS_FILE}"
+
+  termux::audit_manifest_write "$label" "$script_path" "$device_id"
+  termux::audit_emit_record \
+    "session_start" \
+    "info" \
+    "Sessão iniciada: ${label}" \
+    "\"label\":\"$(termux::audit_json_escape "$label")\",\"script_path\":\"$(termux::audit_json_escape "$script_path")\",\"device_id\":\"$(termux::audit_json_escape "$device_id")\""
+
+  if [ -n "$device_id" ]; then
+    termux::audit_attach_device "$device_id"
+  fi
+}
+
+termux::audit_session_finish() {
+  local exit_code="$1"
+  local summary_cmd
+
+  if ! termux::audit_enabled || [ "${TERMUXAI_AUDIT_SESSION_OWNER:-0}" -ne 1 ] 2>/dev/null || [ -z "${TERMUXAI_AUDIT_SESSION_DIR:-}" ]; then
+    return 0
+  fi
+
+  termux::audit_emit_record \
+    "session_finish" \
+    "$([ "$exit_code" -eq 0 ] 2>/dev/null && printf 'info' || printf 'error')" \
+    "Sessão finalizada com exit_code=${exit_code}" \
+    "\"exit_code\":${exit_code}"
+
+  summary_cmd=(python3 "${TERMUX_WORKSPACE_ROOT}/Audit/audit_runner.py" summarize "${TERMUXAI_AUDIT_SESSION_DIR}")
+  "${summary_cmd[@]}" >/dev/null 2>&1 || true
+
+  unset TERMUXAI_AUDIT_SESSION_OWNER TERMUXAI_AUDIT_SESSION_ID TERMUXAI_AUDIT_SESSION_DIR
+  unset TERMUXAI_AUDIT_EVENTS_FILE TERMUXAI_AUDIT_MANIFEST_FILE TERMUXAI_AUDIT_SUMMARY_FILE TERMUXAI_AUDIT_SUMMARY_MD_FILE
+  unset TERMUXAI_AUDIT_REPORT_TXT_FILE TERMUXAI_AUDIT_LABEL TERMUXAI_AUDIT_STEP_SEQ TERMUXAI_AUDIT_CURRENT_STEP_SEQ
+  unset TERMUXAI_AUDIT_CURRENT_STEP_LOG TERMUXAI_AUDIT_DEVICE_ID TERMUXAI_AUDIT_DEVICE_DIR TERMUXAI_AUDIT_DEVICE_READY
+  unset TERMUXAI_AUDIT_DEVICE_EVENTS_FILE TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE
 }
 
 termux::require_host_command() {
@@ -102,6 +579,199 @@ termux::require_host_command() {
       "$impact_text" \
       "$next_step_text"
   fi
+}
+
+termux::host_cache_root() {
+  local cache_root="${TERMUXAI_HOST_CACHE_ROOT:-$TERMUXAI_HOST_CACHE_ROOT_DEFAULT}"
+  mkdir -p "$cache_root"
+  printf '%s\n' "$cache_root"
+}
+
+termux::adb_cache_dir() {
+  local cache_dir="${TERMUXAI_ADB_CACHE_DIR:-$TERMUXAI_ADB_CACHE_DIR_DEFAULT}"
+  mkdir -p "$cache_dir"
+  printf '%s\n' "$cache_dir"
+}
+
+termux::adb_cache_file() {
+  local file_name="$1"
+  printf '%s/%s\n' "$(termux::adb_cache_dir)" "$file_name"
+}
+
+termux::adb_cached_network_endpoint() {
+  local cache_file
+
+  cache_file="$(termux::adb_cache_file last_network_endpoint)"
+  if [ -r "$cache_file" ]; then
+    tr -d '\r\n' < "$cache_file"
+  fi
+}
+
+termux::adb_cached_network_ip() {
+  local cache_file
+
+  cache_file="$(termux::adb_cache_file last_network_ip)"
+  if [ -r "$cache_file" ]; then
+    tr -d '\r\n' < "$cache_file"
+  fi
+}
+
+termux::adb_cache_network_endpoint() {
+  local endpoint="$1"
+  local ip_part endpoint_file ip_file
+
+  case "$endpoint" in
+    *:*)
+      ip_part="${endpoint%%:*}"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  endpoint_file="$(termux::adb_cache_file last_network_endpoint)"
+  ip_file="$(termux::adb_cache_file last_network_ip)"
+  printf '%s\n' "$endpoint" > "$endpoint_file"
+  printf '%s\n' "$ip_part" > "$ip_file"
+}
+
+termux::adb_network_device_present() {
+  local device_list="$1"
+
+  printf '%s\n' "$device_list" \
+    | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { found=1 } END { exit(found ? 0 : 1) }'
+}
+
+termux::adb_disconnect_offline_network_targets() {
+  local serial
+
+  while IFS= read -r serial; do
+    [ -n "$serial" ] || continue
+    adb disconnect "$serial" >/dev/null 2>&1 || true
+  done < <(
+    adb devices -l 2>/dev/null \
+      | awk 'NR > 1 && $2 == "offline" && $1 ~ /:/ { print $1 }'
+  )
+}
+
+termux::adb_mdns_candidate_endpoints() {
+  adb mdns services 2>/dev/null \
+    | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+' \
+    | sort -u
+}
+
+termux::adb_try_connect_endpoint() {
+  local endpoint="$1"
+  local output=""
+  local timeout_seconds="${TERMUXAI_WIFI_CONNECT_TIMEOUT_SECONDS:-5}"
+
+  case "$endpoint" in
+    *:*)
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  output="$(termux::run_with_timeout "$timeout_seconds" adb connect "$endpoint" 2>&1 || true)"
+
+  if adb devices -l 2>/dev/null | awk -v target="$endpoint" 'NR > 1 && $1 == target && $2 == "device" { found=1 } END { exit(found ? 0 : 1) }'; then
+    termux::adb_cache_network_endpoint "$endpoint"
+    return 0
+  fi
+
+  case "$output" in
+    *"connected to "*)
+      termux::adb_cache_network_endpoint "$endpoint"
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+termux::adb_scan_candidate_endpoints_for_ip() {
+  local ip_addr="$1"
+  local scan_range="${TERMUXAI_WIFI_SCAN_RANGE:-32000-50000}"
+  local scan_parallel="${TERMUXAI_WIFI_SCAN_PARALLEL:-64}"
+  local scan_timeout="${TERMUXAI_WIFI_SCAN_TIMEOUT_SECONDS:-25}"
+  local range_start range_end
+
+  if ! command -v nc >/dev/null 2>&1; then
+    return 0
+  fi
+
+  case "$scan_range" in
+    *-*)
+      range_start="${scan_range%-*}"
+      range_end="${scan_range#*-}"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  if ! [ "$range_start" -ge 1 ] 2>/dev/null || ! [ "$range_end" -ge "$range_start" ] 2>/dev/null; then
+    return 0
+  fi
+
+  termux::run_with_timeout "$scan_timeout" bash -lc '
+    seq "$1" "$2" \
+      | xargs -n1 -P"$3" sh -c '"'"'
+          host="$1"
+          port="$2"
+          nc -z -w1 "$host" "$port" >/dev/null 2>&1 && printf "%s:%s\n" "$host" "$port"
+        '"'"' _ "$4" \
+      | sort -u
+  ' _ "$range_start" "$range_end" "$scan_parallel" "$ip_addr" 2>/dev/null || true
+}
+
+termux::adb_attempt_wifi_recovery() {
+  local before_list after_list candidate endpoint cached_endpoint cached_ip
+
+  before_list="$(adb devices -l 2>&1 || true)"
+
+  if printf '%s\n' "$before_list" | awk 'NR > 1 && $2 == "device" { found=1 } END { exit(found ? 0 : 1) }'; then
+    return 0
+  fi
+
+  adb reconnect offline >/dev/null 2>&1 || true
+  termux::adb_disconnect_offline_network_targets
+
+  after_list="$(adb devices -l 2>&1 || true)"
+  if printf '%s\n' "$after_list" | awk 'NR > 1 && $2 == "device" { found=1 } END { exit(found ? 0 : 1) }'; then
+    return 0
+  fi
+
+  cached_endpoint="$(termux::adb_cached_network_endpoint)"
+  cached_ip="$(termux::adb_cached_network_ip)"
+
+  for candidate in \
+    "$cached_endpoint" \
+    $(printf '%s\n' "$after_list" | awk 'NR > 1 && $1 ~ /:/ { print $1 }') \
+    $(termux::adb_mdns_candidate_endpoints)
+  do
+    [ -n "$candidate" ] || continue
+    termux::adb_try_connect_endpoint "$candidate" || true
+  done
+
+  after_list="$(adb devices -l 2>&1 || true)"
+  if printf '%s\n' "$after_list" | awk 'NR > 1 && $2 == "device" { found=1 } END { exit(found ? 0 : 1) }'; then
+    termux::adb_disconnect_offline_network_targets
+    return 0
+  fi
+
+  if [ -n "$cached_ip" ]; then
+    while IFS= read -r endpoint; do
+      [ -n "$endpoint" ] || continue
+      termux::adb_try_connect_endpoint "$endpoint" || true
+    done < <(termux::adb_scan_candidate_endpoints_for_ip "$cached_ip")
+  fi
+
+  termux::adb_disconnect_offline_network_targets
+
+  after_list="$(adb devices -l 2>&1 || true)"
+  printf '%s\n' "$after_list" | awk 'NR > 1 && $2 == "device" { found=1 } END { exit(found ? 0 : 1) }'
 }
 
 termux::adb_device_list() {
@@ -123,29 +793,41 @@ termux::resolve_single_device() {
   local network_count
   local network_id
   local device_count
+  local recovery_attempted=0
 
-  device_list="$(termux::adb_device_list)"
+  refresh_device_list() {
+    device_list="$(termux::adb_device_list)"
 
-  usb_count=$(
-    printf '%s\n' "$device_list" \
-      | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { count++ } END { print count + 0 }'
-  )
-  usb_id=$(
-    printf '%s\n' "$device_list" \
-      | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { print $1; exit }'
-  )
-  network_count=$(
-    printf '%s\n' "$device_list" \
-      | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { count++ } END { print count + 0 }'
-  )
-  network_id=$(
-    printf '%s\n' "$device_list" \
-      | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { print $1; exit }'
-  )
-  device_count=$(
-    printf '%s\n' "$device_list" \
-      | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }'
-  )
+    usb_count=$(
+      printf '%s\n' "$device_list" \
+        | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { count++ } END { print count + 0 }'
+    )
+    usb_id=$(
+      printf '%s\n' "$device_list" \
+        | awk 'NR > 1 && $2 == "device" && ($0 ~ / usb:/ || $1 !~ /:/) { print $1; exit }'
+    )
+    network_count=$(
+      printf '%s\n' "$device_list" \
+        | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { count++ } END { print count + 0 }'
+    )
+    network_id=$(
+      printf '%s\n' "$device_list" \
+        | awk 'NR > 1 && $2 == "device" && $0 !~ / usb:/ && $1 ~ /:/ { print $1; exit }'
+    )
+    device_count=$(
+      printf '%s\n' "$device_list" \
+        | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }'
+    )
+  }
+
+  refresh_device_list
+
+  if [ "$device_count" -eq 0 ]; then
+    if termux::adb_attempt_wifi_recovery; then
+      recovery_attempted=1
+      refresh_device_list
+    fi
+  fi
 
   if [ "$usb_count" -eq 1 ]; then
     printf '%s\n' "$usb_id"
@@ -161,6 +843,7 @@ termux::resolve_single_device() {
   fi
 
   if [ "$network_count" -eq 1 ]; then
+    termux::adb_cache_network_endpoint "$network_id"
     printf '%s\n' "$network_id"
     return 0
   fi
@@ -178,7 +861,13 @@ termux::resolve_single_device() {
       'adb devices -l' \
       "$device_list" \
       'Nenhum dispositivo em estado device foi encontrado.' \
-      'Conectar via USB ou reconectar o endpoint ADB por Wi‑Fi antes de prosseguir.'
+      "$(
+        if [ "$recovery_attempted" -eq 1 ]; then
+          printf '%s' 'A recuperação automática de ADB por Wi‑Fi não encontrou um endpoint válido; verificar se Wireless debugging continua ligado no Android ou conectar via USB.'
+        else
+          printf '%s' 'Conectar via USB ou manter Wireless debugging ligado; os wrappers agora tentam recuperar automaticamente o último endpoint Wi‑Fi conhecido antes de falhar.'
+        fi
+      )"
   fi
 
   termux::fail \
@@ -230,6 +919,10 @@ termux::adb_run() {
   local output
   local status
   local timeout_seconds="${TERMUX_ADB_TIMEOUT_SECONDS:-0}"
+  local command_text
+
+  command_text="adb -s \"$device_id\" $*"
+  termux::audit_command "$command_text"
 
   if ! output=$(termux::run_with_timeout "$timeout_seconds" adb -s "$device_id" "$@" 2>&1); then
     status=$?
@@ -237,13 +930,15 @@ termux::adb_run() {
       output="Comando ADB excedeu ${timeout_seconds}s.
 ${output}"
     fi
+    termux::audit_command_result "$status" "$output"
     termux::fail \
-      "adb -s \"$device_id\" $*" \
+      "$command_text" \
       "$output" \
       "$impact_text" \
       "$next_step_text"
   fi
 
+  termux::audit_command_result 0 "$output"
   printf '%s\n' "$output"
 }
 

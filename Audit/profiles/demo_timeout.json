@@ -1,0 +1,20 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Timeout controlado",
+      "description": "Demonstra timeout e interrupção previsível.",
+      "command": "printf 'sleep iniciado\\n'; sleep 3; printf 'nao deveria aparecer\\n'",
+      "timeout": 1,
+      "continue_on_error": true,
+      "severity": "warn"
+    },
+    {
+      "name": "Etapa posterior",
+      "command": "printf 'etapa posterior executada\\n'"
+    }
+  ]
+}

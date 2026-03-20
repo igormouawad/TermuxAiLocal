@@ -121,6 +121,72 @@ Do not treat this file as a historical changelog.
     - Debian GUI reprovision plus `xeyes` validation after reinstall
   - latest telemetry refactor validation report:
     - `~/Documentos/AI/TermuxAiLocal/ADB/reports/validate-baseline-20260319-202630/summary.txt`
+- Current audit runner integration state:
+  - the bundle-derived audit subsystem now lives in:
+    - `~/Documentos/AI/TermuxAiLocal/Audit/audit_runner.py`
+    - `~/Documentos/AI/TermuxAiLocal/Audit/profiles/`
+    - `~/Documentos/AI/TermuxAiLocal/Audit/README.md`
+  - chosen base:
+    - the integration uses the enterprise runner architecture as the main base, but adapted to the workspace real model
+  - current supported modes:
+    - `exec`: local JSON runner with persistent artifacts
+    - `watch`: UI for mirrored host-side sessions
+    - `summarize`: summary generation without requiring `rich`
+  - chosen runtime model:
+    - host/device hybrid with Termux app as the canonical UI target
+  - host-side public wrappers now start an audit session by default unless `TERMUXAI_AUDIT=0`
+  - nested flows are supported:
+    - `workspace_host_menu.sh` opens a parent session
+    - child wrappers append events to the same session instead of creating a second one
+  - the shell integration currently emits:
+    - `session_start`
+    - `step_start`
+    - `note`
+    - `command`
+    - `command_result`
+    - `step_finish`
+    - `failure`
+    - `session_finish`
+  - current host-side artifact root:
+    - `~/Documentos/AI/TermuxAiLocal/Audit/runs/`
+  - current Termux mirror root:
+    - `/data/data/com.termux/files/home/.cache/termux-ai-local/audit/sessions/`
+  - current install/provision integration:
+    - `Install/adb_provision.sh` now pushes the runner and JSON profiles to `/data/local/tmp`
+    - `Install/adb_reinstall_termux_official.sh` now also pushes those audit assets during clean reinstall
+    - `Install/install_termux_stack.sh` now installs `python`, `rich`, the runner payload, JSON profiles and these launchers in `~/bin`:
+      - `termux-audit-run`
+      - `termux-audit-watch`
+      - `termux-audit-summarize`
+  - local validation already passed for the new subsystem:
+    - `python3 -m py_compile Audit/audit_runner.py`
+    - `bash -n`
+    - `shellcheck -S warning`
+    - `git diff --check`
+    - `python3 Audit/audit_runner.py exec Audit/profiles/demo_host_exec.json --no-screen --no-reports`
+    - `python3 Audit/audit_runner.py exec Audit/profiles/demo_failure.json --no-screen --no-reports`
+    - `python3 Audit/audit_runner.py exec Audit/profiles/demo_timeout.json --no-screen --no-reports`
+    - simulated shell-session audit via `lib/termux_common.sh` without touching the Android device
+    - `bash workspace_host_menu.sh --run continue_patch_check --yes`
+  - runtime/device validation now also passed on the live USB target `<ADB_USB_SERIAL>`:
+    - minimal runtime install of `rich` plus `termux-audit-run`, `termux-audit-watch` and `termux-audit-summarize` in the current Termux home
+    - fix in `Audit/audit_runner.py` for mixed ISO datetimes with and without timezone offsets in `watch`
+    - per-session launcher `~/bin/termux-audit-watch-current`, generated host-side and pointed at the live mirrored session
+    - explicit watcher relaunch after `workspace ready` in the wrappers that rebuild/reopen the Termux desktop:
+      - `ADB/adb_run_x11_command.sh`
+      - `ADB/adb_start_desktop.sh`
+      - `ADB/adb_set_x11_resolution.sh`
+      - `ADB/adb_reset_termux_stack.sh`
+      - `ADB/adb_validate_baseline.sh`
+      - `Install/adb_provision.sh`
+      - `Debian/adb_provision_debian_trixie_gui.sh`
+      - `Debian/adb_install_debian_trixie_gui.sh`
+    - direct manual validation of `termux::audit_launch_device_watch` on a mirrored host session
+    - integrated host-wrapper validation with the watcher visible in the app Termux for:
+      - `ADB/adb_run_x11_command.sh`
+      - `ADB/adb_validate_baseline.sh`
+  - current known limitation:
+    - very long validations may still outlive the host PTY capture used by Codex itself; when that happens, trust `Audit/runs/<session-id>/events.jsonl`, `summary.json`, the generated report directory, and the on-device watcher state instead of the truncated PTY transcript
 
 ## Workspace Identity
 - Root: `~/Documentos/AI/TermuxAiLocal`
@@ -222,20 +288,54 @@ Do not treat this file as a historical changelog.
     - after reboot, the active desk changed again to `7`
     - the helper still converged correctly because it resolves the live desk id instead of relying on any fixed number
 - Current validated ADB Wi‑Fi recovery state:
-  - when USB is absent, the host can recover ADB Wi‑Fi by reading the Android `Wireless debugging` screen directly
+  - when USB is absent, the host now tries Wi‑Fi recovery automatically before failing
+  - current automatic recovery order:
+    - `adb reconnect offline`
+    - current network transports already known by `adb devices -l`
+    - `adb mdns services`
+    - last valid Wi‑Fi endpoint cached locally on the host
+    - short port scan on the last valid Wi‑Fi IP cached locally on the host
+  - the cache is host-local and outside the Git worktree:
+    - `~/.cache/termux-ai-local/adb/last_network_endpoint`
+    - `~/.cache/termux-ai-local/adb/last_network_ip`
+  - latest SSH-only validation confirmed that this automatic recovery can reconnect the tablet without operator input when the Android Wi‑Fi debugging service is still alive but the old endpoint expired
   - the Android screen exposes two different endpoints:
     - `connect`: from the main `Wireless debugging` page
     - `pair`: from `Pair device with pairing code`
   - do not assume the `pair` port is usable for `adb connect`
-  - latest validated screen capture in this session showed:
-    - `connect`: `<ADB_WIFI_CONNECT_ENDPOINT>`
-    - `pair`: `<ADB_WIFI_PAIR_ENDPOINT>`
-  - the host confirmed `<ADB_WIFI_CONNECT_ENDPOINT>` as `device` for model `SM-X736B`
+  - the host confirmed a fresh auto-discovered `connect` endpoint as `device` for model `SM-X736B`
   - a later workstation validation confirmed the tablet simultaneously reachable by:
     - USB: `<ADB_USB_SERIAL>`
     - Wi‑Fi: `<ADB_WIFI_CONNECT_ENDPOINT>`
   - with both transports present, the host wrappers correctly auto-selected the USB target
   - stale `offline` transports on old Wi‑Fi ports may accumulate and should be disconnected before continuing
+  - official Android scope limit:
+    - the workspace can auto-reconnect only while `Wireless debugging` is still enabled by Android
+    - there is no supported project path to force `Wireless debugging` to remain permanently enabled across reboot or when Android itself disables it after network/idle changes
+  - current Samsung-specific escalation path now validated on the live USB tablet `<ADB_USB_SERIAL>`:
+    - after reboot, `adb_wifi_enabled` returned to `0`
+    - with USB still present, the host successfully restored Wi‑Fi ADB by:
+      - `settings put global adb_wifi_enabled 1`
+      - short port scan on the current Wi‑Fi IP
+      - `adb connect` to the discovered `connect` endpoint
+    - an active Wi‑Fi ADB session fell to `offline` again as soon as `adb_wifi_enabled` was forced back to `0`
+    - USB and Wi‑Fi were validated simultaneously in `adb devices -l`; disconnecting all transports is not required just to test Wi‑Fi
+  - the new explicit host helper for this path is:
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh status`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh connect`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh disable`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh tcpip`
+  - latest end-to-end helper validation on the live USB tablet `<ADB_USB_SERIAL>` passed for:
+    - `status`
+    - `disable`
+    - `connect`
+    - `tcpip`
+  - `disable` now waits for `adb_wifi_enabled=0` to be confirmed and clears stale `offline` network transports before reporting success
+  - `connect` now leaves the workstation in the expected daily mixed-transport state:
+    - USB still available as the primary control path
+    - one live Wi‑Fi `device` endpoint available for SSH/host scenarios
+  - scope note:
+    - `adb_wifi_enabled` control is a validated device-specific path on this Samsung build, not an officially documented Android API guarantee
 - Important scope boundary:
   - `adb_reset_termux_stack.sh` now rebuilds the validated desktop mode/freeform arrangement directly and no longer treats Android split layout as the canonical path
   - use the freeform helper as the canonical way to reapply or rebuild the approved Android desktop layout

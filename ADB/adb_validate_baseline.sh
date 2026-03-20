@@ -23,6 +23,7 @@ X11_UI_LOCAL="$(mktemp)"
 RUN_TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT_ROOT="${PROJECT_ROOT}/reports/validate-baseline-${RUN_TIMESTAMP}"
 REPORT_SUMMARY="${REPORT_ROOT}/summary.txt"
+AUDIT_OWNER=0
 
 write_report() {
   local line="$1"
@@ -52,8 +53,13 @@ persist_artifacts() {
 }
 
 cleanup() {
+  local exit_code=$?
+
   persist_artifacts
   rm -f "$TERMUX_OUTPUT_LOCAL" "$X11_UI_LOCAL"
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
 }
 
 trap cleanup EXIT
@@ -349,6 +355,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Validação baseline do stack Termux' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 write_report "device_id=${DEVICE_ID}"
 step_begin 'Coletando metadados do device e auditando os apps Android obrigatórios'
@@ -381,6 +389,7 @@ fi
 write_report 'termux_stack_reset=ok'
 write_report 'termux_x11_surface=ok'
 step_ok 'Reset concluído e surface X11 detectada.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 desktop_start_helper_name="$(termux::desktop_start_helper "$DESKTOP_PROFILE" 0)"
 desktop_stop_helper_name="$(termux::desktop_stop_helper "$DESKTOP_PROFILE")"

@@ -7,9 +7,11 @@ LOG_DIR="${CACHE_DIR}/logs"
 mkdir -p "$HOME/bin" "$CACHE_DIR" "$LOG_DIR"
 
 SCRIPT_LOG="${LOG_DIR}/install-termux-stack-$(date +%Y%m%d-%H%M%S).log"
-TOTAL_STEPS=12
+TOTAL_STEPS=14
 CURRENT_STEP=0
 LAST_STEP_LOG=""
+AUDIT_RUNNER_SOURCE="/data/local/tmp/termuxai_audit_runner.py"
+AUDIT_PROFILES_SOURCE="/data/local/tmp/termuxai_audit_profiles"
 DEFAULT_X11_RESOLUTION="${TERMUX_X11_DEFAULT_RESOLUTION:-1920x1080}"
 DEFAULT_X11_PROFILE="${TERMUX_X11_DEFAULT_PROFILE:-balanced}"
 TERMUX_X11_BALANCED_RESOLUTION="${TERMUX_X11_BALANCED_RESOLUTION:-${DEFAULT_X11_RESOLUTION}}"
@@ -163,7 +165,11 @@ ensure_termux_context() {
 
 prepare_termux_shell() {
   touch "$HOME/.bashrc"
+  touch "$HOME/.profile"
+  touch "$HOME/.bash_profile"
   append_once "$HOME/.bashrc" 'export PATH="$HOME/bin:$PATH"'
+  append_once "$HOME/.profile" 'export PATH="$HOME/bin:$PATH"'
+  append_once "$HOME/.bash_profile" 'export PATH="$HOME/bin:$PATH"'
 
   export PATH="$HOME/bin:$PATH"
   export TERMUX_STACK_DISPLAY="${TERMUX_STACK_DISPLAY:-:1}"
@@ -2895,6 +2901,141 @@ EOF
   fi
 }
 
+install_audit_python_dependency() {
+  local python_bin
+
+  python_bin="$(command -v python3 || command -v python || true)"
+  if [ -z "$python_bin" ]; then
+    fail \
+      'command -v python3 || command -v python' \
+      'Python não ficou disponível após a instalação dos pacotes base.' \
+      'O audit runner canônico não pode ser instalado sem runtime Python no Termux.' \
+      'Revisar a etapa de instalação de pacotes e repetir o bootstrap.'
+  fi
+
+  "$python_bin" -m pip install --no-input --upgrade rich
+}
+
+install_audit_runner_assets() {
+  local audit_root="$HOME/.local/share/termux-ai-local/audit"
+  local runner_target="${audit_root}/audit_runner.py"
+  local profiles_target="${audit_root}/profiles"
+
+  if [ ! -f "$AUDIT_RUNNER_SOURCE" ]; then
+    log_line "Audit runner ausente em ${AUDIT_RUNNER_SOURCE}; seguindo sem instalar os wrappers termux-audit-*."
+    return 0
+  fi
+
+  mkdir -p "$audit_root" "$profiles_target" "$HOME/bin"
+  install -m 755 "$AUDIT_RUNNER_SOURCE" "$runner_target"
+
+  rm -rf "$profiles_target"
+  mkdir -p "$profiles_target"
+  if [ -d "$AUDIT_PROFILES_SOURCE" ]; then
+    cp -R "${AUDIT_PROFILES_SOURCE}/." "$profiles_target/"
+  else
+    log_line "Perfis do audit runner ausentes em ${AUDIT_PROFILES_SOURCE}; instalando apenas o runner principal."
+  fi
+
+  cat > "$HOME/bin/termux-audit-run" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+export HOME="${HOME:-/data/data/com.termux/files/home}"
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export TMPDIR="${TMPDIR:-${PREFIX}/tmp}"
+export PATH="${HOME}/bin:${PREFIX}/bin:/system/bin:/system/xbin"
+export LD_LIBRARY_PATH="${PREFIX}/lib"
+
+audit_root="$HOME/.local/share/termux-ai-local/audit"
+runner="$audit_root/audit_runner.py"
+profiles_dir="$audit_root/profiles"
+python_bin="${PREFIX}/bin/python3"
+
+if [ ! -x "$python_bin" ]; then
+  python_bin="$(command -v python3 || command -v python || true)"
+fi
+
+if [ -z "$python_bin" ] || [ ! -f "$runner" ]; then
+  printf 'termux-audit-run indisponível: verifique Python e o runner instalado em %s.\n' "$runner" >&2
+  exit 1
+fi
+
+if [ "$#" -gt 0 ] && [ -f "$profiles_dir/$1" ]; then
+  profile_path="$profiles_dir/$1"
+  shift
+else
+  profile_path="${1:-}"
+  if [ -n "$profile_path" ]; then
+    shift
+  fi
+fi
+
+if [ -n "$profile_path" ]; then
+  exec "$python_bin" "$runner" exec "$profile_path" "$@"
+fi
+
+exec "$python_bin" "$runner" exec "$@"
+EOF
+
+  cat > "$HOME/bin/termux-audit-watch" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+export HOME="${HOME:-/data/data/com.termux/files/home}"
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export TMPDIR="${TMPDIR:-${PREFIX}/tmp}"
+export PATH="${HOME}/bin:${PREFIX}/bin:/system/bin:/system/xbin"
+export LD_LIBRARY_PATH="${PREFIX}/lib"
+
+audit_root="$HOME/.local/share/termux-ai-local/audit"
+runner="$audit_root/audit_runner.py"
+python_bin="${PREFIX}/bin/python3"
+
+if [ ! -x "$python_bin" ]; then
+  python_bin="$(command -v python3 || command -v python || true)"
+fi
+
+if [ -z "$python_bin" ] || [ ! -f "$runner" ]; then
+  printf 'termux-audit-watch indisponível: verifique Python e o runner instalado em %s.\n' "$runner" >&2
+  exit 1
+fi
+
+exec "$python_bin" "$runner" watch "$@"
+EOF
+
+  cat > "$HOME/bin/termux-audit-summarize" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+export HOME="${HOME:-/data/data/com.termux/files/home}"
+export PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+export TMPDIR="${TMPDIR:-${PREFIX}/tmp}"
+export PATH="${HOME}/bin:${PREFIX}/bin:/system/bin:/system/xbin"
+export LD_LIBRARY_PATH="${PREFIX}/lib"
+
+audit_root="$HOME/.local/share/termux-ai-local/audit"
+runner="$audit_root/audit_runner.py"
+python_bin="${PREFIX}/bin/python3"
+
+if [ ! -x "$python_bin" ]; then
+  python_bin="$(command -v python3 || command -v python || true)"
+fi
+
+if [ -z "$python_bin" ] || [ ! -f "$runner" ]; then
+  printf 'termux-audit-summarize indisponível: verifique Python e o runner instalado em %s.\n' "$runner" >&2
+  exit 1
+fi
+
+exec "$python_bin" "$runner" summarize "$@"
+EOF
+
+  chmod +x \
+    "$HOME/bin/termux-audit-run" \
+    "$HOME/bin/termux-audit-watch" \
+    "$HOME/bin/termux-audit-summarize"
+}
+
 apply_default_x11_preferences() {
   local pref_output=""
   local pref_status=0
@@ -2980,6 +3121,15 @@ print_summary() {
   printf -- '- %s/bin/start-maxperf-x11\n' "$HOME"
   printf -- '- %s/bin/check-gpu-termux\n' "$HOME"
   printf -- '- %s/bin/set-x11-resolution\n' "$HOME"
+  if [ -x "$HOME/bin/termux-audit-run" ]; then
+    printf -- '- %s/bin/termux-audit-run\n' "$HOME"
+  fi
+  if [ -x "$HOME/bin/termux-audit-watch" ]; then
+    printf -- '- %s/bin/termux-audit-watch\n' "$HOME"
+  fi
+  if [ -x "$HOME/bin/termux-audit-summarize" ]; then
+    printf -- '- %s/bin/termux-audit-summarize\n' "$HOME"
+  fi
   if [ -x "$HOME/bin/termux-workspace-menu" ]; then
     printf -- '- %s/bin/termux-workspace-menu\n' "$HOME"
   fi
@@ -3001,8 +3151,10 @@ run_step 'Fixando repositório X11 do Termux' configure_termux_repos
 run_step 'Atualizando índice de pacotes após habilitar o repositório X11' pkg update -y
 run_step \
   'Instalando pacotes base do stack X11/XFCE/virgl' \
-  pkg install -y "${PKG_NONINTERACTIVE_OPTS[@]}" termux-x11-nightly termux-api virglrenderer-android mesa-demos pulseaudio dbus openbox aterm xterm xfce4-session xfce4-panel xfce4-terminal xfdesktop xfwm4 xfce4-settings thunar tint2 rofi dunst obconf-qt lxappearance xorg-xsetroot glmark2
+  pkg install -y "${PKG_NONINTERACTIVE_OPTS[@]}" python termux-x11-nightly termux-api virglrenderer-android mesa-demos pulseaudio dbus openbox aterm xterm xfce4-session xfce4-panel xfce4-terminal xfdesktop xfwm4 xfce4-settings thunar tint2 rofi dunst obconf-qt lxappearance xorg-xsetroot glmark2
+run_step 'Instalando a dependência Rich para a UI de auditoria' install_audit_python_dependency
 run_step 'Normalizando wrapper termux-x11' normalize_termux_x11_wrapper
 run_step 'Gerando helpers do projeto no Termux' install_termux_helpers
+run_step 'Instalando o audit runner do workspace no Termux' install_audit_runner_assets
 run_step 'Aplicando preferências padrão do Termux:X11' apply_default_x11_preferences
 print_summary

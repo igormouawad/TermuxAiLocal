@@ -11,6 +11,17 @@ PROFILE="${1:-performance}"
 CUSTOM_RESOLUTION="${2:-}"
 TOTAL_STEPS=2
 CURRENT_STEP=0
+AUDIT_OWNER=0
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 case "$PROFILE" in
   --help|-h)
@@ -38,6 +49,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Ajuste de resolução do Termux:X11' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 case "$PROFILE" in
   performance|balanced|native|show)
@@ -83,6 +96,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
 step_ok 'Desktop mode ativo e janelas base prontas.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 step_begin "Aplicando o perfil de resolução ${PROFILE} no Termux:X11"
 bash "${PROJECT_ROOT}/adb_termux_send_command.sh" \

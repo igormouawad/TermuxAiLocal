@@ -1,0 +1,26 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true,
+    "continue_on_error": false
+  },
+  "steps": [
+    {
+      "name": "Contexto rápido do host",
+      "description": "Hostname, usuário atual e diretório.",
+      "command": "printf 'HOST=%s\\nUSER=%s\\nPWD=%s\\n' \"$(hostname)\" \"$(id -un)\" \"$PWD\""
+    },
+    {
+      "name": "Kernel e release",
+      "description": "Metadados curtos do sistema local.",
+      "command": "uname -a && printf '\\n' && sed -n '1,6p' /etc/os-release 2>/dev/null || true",
+      "continue_on_error": true,
+      "severity": "warn"
+    },
+    {
+      "name": "Disco do workspace",
+      "description": "Uso resumido do filesystem atual.",
+      "command": "df -h ."
+    }
+  ]
+}

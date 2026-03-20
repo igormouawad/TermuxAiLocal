@@ -11,11 +11,13 @@ O projeto organiza um fluxo verificavel para provisionar, reinstalar, validar e 
 - valida baseline de desktop, X11 e GPU com relatorio
 - inicia o desktop suportado com perfil diario validado
 - executa comandos X11 e apps Debian GUI a partir do host
+- espelha sessoes host-side para uma UI visual no app Termux com logs persistentes leves
 - preserva um fluxo operacional reproducivel para uso diario
 
 ## Arquitetura resumida
 
 - `ADB/`: automacao host-side e wrappers ADB
+- `Audit/`: runner visual, perfis JSON, watcher da sessao espelhada e docs de manutencao
 - `Install/`: provisionamento, bootstrap e reinstalacao limpa
 - `Debian/`: instalacao e launchers do Debian GUI em `proot`
 - `lib/`: helpers compartilhados entre os scripts
@@ -59,6 +61,7 @@ bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 
 - ADB orquestra; Termux executa
 - `adb shell` nao substitui o contexto real do app Termux
+- a UI canonica de auditoria agora vive no app Termux e consome eventos JSON espelhados pelo host
 - o criterio aceito de 3D e EGL/GLES com `GL_RENDERER=virgl`
 - o caminho grafico aceito neste workspace e `VirGL plain` com `GALLIUM_DRIVER=virpipe`
 - o baseline diario suportado e `Openbox` com perfil `openbox-maxperf`
@@ -66,6 +69,7 @@ bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 ## Documentacao principal
 
 - `README_ADB.md`
+- `Audit/README.md`
 - `Workspace-Handoff.md`
 - `Termux-Android-Best-Practices.md`
 - `Local-Model-Execution-Guide.md`

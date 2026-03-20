@@ -6,6 +6,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/termux_common.sh
 source "$(cd -- "${SCRIPT_DIR}/.." && pwd)/lib/termux_common.sh"
 
+AUDIT_OWNER=0
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
+
 fail() {
   termux::fail "$@"
 }
@@ -24,6 +36,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Encerramento do Termux:X11' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 set +e
 bash "${SCRIPT_DIR}/adb_termux_send_command.sh" \

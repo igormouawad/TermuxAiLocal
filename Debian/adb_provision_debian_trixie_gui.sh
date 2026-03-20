@@ -17,10 +17,21 @@ PAYLOAD_FILES=(
 FORWARDED_ARGS=()
 TOTAL_STEPS=3
 CURRENT_STEP=0
+AUDIT_OWNER=0
 
 fail() {
   termux::fail "$@"
 }
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 step_begin() {
   CURRENT_STEP=$((CURRENT_STEP + 1))
@@ -78,6 +89,8 @@ step_begin 'Resetando o workspace e preparando o desktop livre base'
 bash "${PROJECT_ROOT}/ADB/adb_reset_termux_stack.sh" --focus termux >/dev/null
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Provisionamento host-side do Debian GUI' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 step_ok 'Reset concluído e device resolvido para o provisionamento Debian.'
 
 step_begin 'Enviando os payloads Debian GUI para /data/local/tmp'
@@ -104,6 +117,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'Reconstruir o desktop livre aprovado e repetir o provisionamento.'
 fi
 step_ok 'Desktop livre pronto para a etapa Debian seguinte.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 install_command=(bash /data/local/tmp/install_debian_trixie_gui.sh)
 if [ "${#FORWARDED_ARGS[@]}" -gt 0 ]; then

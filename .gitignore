@@ -25,7 +25,10 @@ Thumbs.db
 /.continue/logs/
 /.continue/sessions/
 /.continue/tmp/
+/.codex_tmp/
 
 # Generated workspace artifacts
 /ADB/reports/
 /Install/.cache/
+/Audit/runs/*
+!/Audit/runs/.gitkeep

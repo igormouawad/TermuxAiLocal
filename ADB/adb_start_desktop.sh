@@ -17,9 +17,15 @@ TOTAL_STEPS=3
 CURRENT_STEP=0
 X11_UI_REMOTE="/sdcard/Download/adb_start_desktop_x11.xml"
 X11_UI_LOCAL="$(mktemp)"
+AUDIT_OWNER=0
 
 cleanup() {
+  local exit_code=$?
+
   rm -f "$X11_UI_LOCAL"
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
 }
 
 trap cleanup EXIT
@@ -191,6 +197,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Subida do desktop Termux/X11' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 step_begin 'Preparando o desktop mode livre e as janelas base do workspace'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
@@ -201,6 +209,7 @@ if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
     'Reconstruir o desktop livre aprovado e repetir a operação.'
 fi
 step_ok 'Desktop mode ativo e janelas base disponíveis.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 if ! termux::desktop_profile_valid "$DESKTOP_PROFILE"; then
   fail \

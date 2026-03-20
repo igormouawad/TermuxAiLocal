@@ -30,7 +30,8 @@ Modos:
   --yes         Pula a confirmacao interativa para --run.
 
 Selecao de device:
-  - por padrao, o menu autodetecta um unico alvo ADB em estado device
+  - por padrao, o menu prefere um unico alvo ADB USB em estado device
+  - sem USB, o menu tenta recuperar automaticamente um unico alvo ADB por Wi‑Fi
   - com multiplos devices, exporte TERMUXAI_DEVICE_ID=SERIAL antes de executar
 EOF
 }
@@ -160,6 +161,22 @@ handler_desktop_mode_on() {
 
 handler_desktop_mode_off() {
   run_workspace_script "ADB/adb_desktop_mode.sh" off
+}
+
+handler_adb_wifi_status() {
+  run_workspace_script "ADB/adb_wifi_debug.sh" status
+}
+
+handler_adb_wifi_connect() {
+  run_workspace_script "ADB/adb_wifi_debug.sh" connect
+}
+
+handler_adb_wifi_disable() {
+  run_workspace_script "ADB/adb_wifi_debug.sh" disable
+}
+
+handler_adb_wifi_tcpip() {
+  run_workspace_script "ADB/adb_wifi_debug.sh" tcpip
 }
 
 handler_start_xfce() {
@@ -326,6 +343,42 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "handler_desktop_mode_off" \
     "0" \
     "Sai do desktop mode e volta para o launcher/tablet mode."
+
+  add_action \
+    "adb_wifi_status" \
+    "ADB / Termux" \
+    "Inspecionar o estado do ADB por Wi‑Fi via USB" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh status" \
+    "handler_adb_wifi_status" \
+    "0" \
+    "Lê adb_wifi_enabled, IP Wi‑Fi, alvos de rede atuais e mDNS usando USB como transporte de controle."
+
+  add_action \
+    "adb_wifi_connect" \
+    "ADB / Termux" \
+    "Ligar e conectar o ADB por Wi‑Fi via USB" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh connect" \
+    "handler_adb_wifi_connect" \
+    "0" \
+    "Ativa adb_wifi_enabled, descobre a porta de connect e deixa USB + Wi‑Fi ativos ao mesmo tempo."
+
+  add_action \
+    "adb_wifi_disable" \
+    "ADB / Termux" \
+    "Desligar o ADB por Wi‑Fi via USB" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh disable" \
+    "handler_adb_wifi_disable" \
+    "0" \
+    "Desconecta alvos de rede e volta adb_wifi_enabled para 0."
+
+  add_action \
+    "adb_wifi_tcpip" \
+    "ADB / Termux" \
+    "Ativar o modo adb tcpip 5555 via USB" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh tcpip" \
+    "handler_adb_wifi_tcpip" \
+    "0" \
+    "Usa a alternativa oficial adb tcpip 5555 mantendo o USB como controle."
 
   add_action \
     "start_xfce" \
@@ -576,8 +629,23 @@ confirm_execution() {
 run_action_index() {
   local index="$1"
   local handler="${ACTION_HANDLERS[$index]}"
+  local status=0
+  local audit_owner=0
 
+  termux::audit_session_begin "Menu host: ${ACTION_IDS[$index]}" "$0"
+  audit_owner="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+  termux::audit_note 'HOST' "Executando ação ${ACTION_IDS[$index]}: ${ACTION_LABELS[$index]}"
+
+  set +e
   "$handler"
+  status=$?
+  set -e
+
+  if [ "$audit_owner" -eq 1 ]; then
+    termux::audit_session_finish "$status"
+  fi
+
+  return "$status"
 }
 
 interactive_menu() {

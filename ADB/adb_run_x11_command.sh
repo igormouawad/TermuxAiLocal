@@ -12,11 +12,17 @@ LOCAL_SCRIPT=""
 WITH_VIRGL=0
 TOTAL_STEPS=3
 CURRENT_STEP=0
+AUDIT_OWNER=0
 X11_UI_REMOTE="/sdcard/Download/adb_run_x11_command_x11.xml"
 X11_UI_LOCAL="$(mktemp)"
 
 cleanup() {
+  local exit_code=$?
+
   rm -f "$X11_UI_LOCAL"
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
 }
 
 trap cleanup EXIT
@@ -104,6 +110,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Execução de comando X11 via host wrapper' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 step_begin 'Preparando desktop mode livre e verificando a janela do Termux:X11'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
@@ -121,6 +129,7 @@ if ! termux::wait_for_x11_surface "$DEVICE_ID" "$X11_UI_REMOTE" "$X11_UI_LOCAL" 
     'Reabrir o app Termux:X11 e repetir a operação.'
 fi
 step_ok 'Workspace pronto e surface X11 confirmada.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 command_text="run-in-x11 ${MODE}"
 

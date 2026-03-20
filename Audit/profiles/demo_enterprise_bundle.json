@@ -1,0 +1,59 @@
+{
+  "defaults": {
+    "shell": false,
+    "continue_on_error": true,
+    "line_buffered": true,
+    "force_color": false,
+    "expected_returncodes": [0]
+  },
+  "steps": [
+    {
+      "name": "Inventário rápido",
+      "description": "Resumo do host e release.",
+      "command": ["bash", "-lc", "hostnamectl || true; echo; uname -a; echo; cat /etc/os-release | sed -n '1,8p'"] ,
+      "severity": "info",
+      "tags": ["host", "release"]
+    },
+    {
+      "name": "Storage com cor",
+      "description": "Usa PTY para preservar comportamento de TTY e saída mais viva.",
+      "command": ["bash", "-lc", "lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINTS; echo; df -hT /"],
+      "severity": "warn",
+      "pty": true,
+      "force_color": true,
+      "tags": ["storage"]
+    },
+    {
+      "name": "Interfaces e rota",
+      "description": "Checa endereçamento e rota padrão.",
+      "command": ["bash", "-lc", "ip -brief a; echo; ip route | sed -n '1,20p'"] ,
+      "severity": "warn",
+      "tags": ["network"]
+    },
+    {
+      "name": "Systemd failed",
+      "description": "Lista unidades com falha sem interromper a auditoria.",
+      "command": ["bash", "-lc", "systemctl --failed --no-pager --plain || true"],
+      "severity": "error",
+      "expected_returncodes": [0],
+      "timeout": 20,
+      "tags": ["systemd"]
+    },
+    {
+      "name": "Journal erros recentes",
+      "description": "Exibe erros do boot atual; falhas aqui contam só como warn.",
+      "command": ["bash", "-lc", "journalctl -p 3 -b --no-pager -n 50 || true"],
+      "severity": "warn",
+      "timeout": 25,
+      "tags": ["journal", "errors"]
+    },
+    {
+      "name": "Exemplo de comando composto",
+      "description": "Exemplo com shell explícito para uma expressão mais complexa.",
+      "command": "for i in 1 2 3; do echo etapa:$i; sleep 0.2; done; echo finalizado",
+      "shell": true,
+      "severity": "info",
+      "tags": ["demo"]
+    }
+  ]
+}

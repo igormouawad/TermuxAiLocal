@@ -11,10 +11,14 @@ INSTALL_ROOT="$SCRIPT_DIR"
 MAIN_PAYLOAD_SOURCE="${INSTALL_ROOT}/install_termux_stack.sh"
 BOOTSTRAP_SOURCE="${INSTALL_ROOT}/install_termux_repo_bootstrap.sh"
 TERMUX_MENU_SOURCE="${INSTALL_ROOT}/termux_workspace_menu.sh"
+AUDIT_RUNNER_SOURCE="${WORKSPACE_ROOT}/Audit/audit_runner.py"
+AUDIT_PROFILES_SOURCE="${WORKSPACE_ROOT}/Audit/profiles"
 TERMUX_SEND_COMMAND_SCRIPT="${WORKSPACE_ROOT}/ADB/adb_termux_send_command.sh"
 MAIN_PAYLOAD_TARGET="/data/local/tmp/install_termux_stack.sh"
 BOOTSTRAP_TARGET="/data/local/tmp/install_termux_repo_bootstrap.sh"
 TERMUX_MENU_TARGET="/data/local/tmp/termux_workspace_menu.sh"
+AUDIT_RUNNER_TARGET="/data/local/tmp/termuxai_audit_runner.py"
+AUDIT_PROFILES_TARGET="/data/local/tmp/termuxai_audit_profiles"
 DOWNLOAD_DIR="${INSTALL_ROOT}/.cache/termux-apks"
 TERMUX_APP_API="https://api.github.com/repos/termux/termux-app/releases/latest"
 TERMUX_API_API="https://api.github.com/repos/termux/termux-api/releases/latest"
@@ -51,9 +55,13 @@ TMP_RESIDUE_PATHS=(
   "/data/local/tmp/install_termux_stack.sh"
   "/data/local/tmp/install_termux_repo_bootstrap.sh"
   "/data/local/tmp/termux_workspace_menu.sh"
+  "/data/local/tmp/termuxai_audit_runner.py"
+  "/data/local/tmp/termuxai_audit_profiles"
   "/data/local/tmp/adb-x11-command-*.sh"
   "/data/local/tmp/glmark2-score-*.log"
 )
+AUDIT_OWNER=0
+BOOTSTRAP_AUDIT_HELPER_PID=""
 
 log_step() {
   CURRENT_STEP=$((CURRENT_STEP + 1))
@@ -67,6 +75,21 @@ log_ok() {
 fail() {
   termux::fail "$@"
 }
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ -n "$BOOTSTRAP_AUDIT_HELPER_PID" ]; then
+    kill "$BOOTSTRAP_AUDIT_HELPER_PID" >/dev/null 2>&1 || true
+    wait "$BOOTSTRAP_AUDIT_HELPER_PID" >/dev/null 2>&1 || true
+  fi
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 run_adb() {
   termux::adb_run \
@@ -128,6 +151,8 @@ fi
 
 resolve_device() {
   DEVICE_ID=$(termux::resolve_target_device)
+  termux::audit_session_begin 'Reinstalação oficial do ecossistema Termux' "$0" "$DEVICE_ID"
+  AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 }
 
 verify_device_abi() {
@@ -518,11 +543,34 @@ stage_payloads() {
       "Garantir que Install/termux_workspace_menu.sh exista no repositorio."
   fi
 
+  if [ ! -f "$AUDIT_RUNNER_SOURCE" ]; then
+    fail \
+      "test -f \"$AUDIT_RUNNER_SOURCE\"" \
+      "Audit runner ausente no host." \
+      "A reinstalação limpa não conseguirá reenviar a UI canônica de auditoria." \
+      "Garantir que Audit/audit_runner.py exista no repositório."
+  fi
+
+  if [ ! -d "$AUDIT_PROFILES_SOURCE" ]; then
+    fail \
+      "test -d \"$AUDIT_PROFILES_SOURCE\"" \
+      "Perfis do audit runner ausentes no host." \
+      "A reinstalação limpa não conseguirá reenviar os perfis de auditoria para o Termux." \
+      "Garantir que Audit/profiles exista no repositório."
+  fi
+
   run_adb push "$MAIN_PAYLOAD_SOURCE" "$MAIN_PAYLOAD_TARGET" >/dev/null
   run_adb push "$BOOTSTRAP_SOURCE" "$BOOTSTRAP_TARGET" >/dev/null
   run_adb push "$TERMUX_MENU_SOURCE" "$TERMUX_MENU_TARGET" >/dev/null
+  run_adb push "$AUDIT_RUNNER_SOURCE" "$AUDIT_RUNNER_TARGET" >/dev/null
+  run_adb shell rm -rf "$AUDIT_PROFILES_TARGET" >/dev/null
+  run_adb shell mkdir -p "$AUDIT_PROFILES_TARGET" >/dev/null
+  for audit_profile in "$AUDIT_PROFILES_SOURCE"/*.json; do
+    run_adb push "$audit_profile" "$AUDIT_PROFILES_TARGET/$(basename "$audit_profile")" >/dev/null
+  done
   run_adb shell chmod 755 "$MAIN_PAYLOAD_TARGET" "$BOOTSTRAP_TARGET" "$TERMUX_MENU_TARGET" >/dev/null
-  log_ok 'Payload principal, bootstrap e menu enviados para /data/local/tmp.'
+  run_adb shell chmod 644 "$AUDIT_RUNNER_TARGET" >/dev/null
+  log_ok 'Payload principal, bootstrap, menu e audit runner enviados para /data/local/tmp.'
 }
 
 print_summary() {
@@ -538,6 +586,8 @@ print_summary() {
     printf 'Payload principal enviado para: %s\n' "$MAIN_PAYLOAD_TARGET"
     printf 'Bootstrap fino enviado para: %s\n' "$BOOTSTRAP_TARGET"
     printf 'Menu Termux enviado para: %s\n' "$TERMUX_MENU_TARGET"
+    printf 'Audit runner enviado para: %s\n' "$AUDIT_RUNNER_TARGET"
+    printf 'Perfis do audit runner enviados para: %s\n' "$AUDIT_PROFILES_TARGET"
     printf 'Termux:API foi aberto automaticamente durante o fluxo.\n'
     printf 'Bootstrap fino executado automaticamente no app Termux.\n'
   fi
@@ -576,11 +626,47 @@ ensure_termux_ready_for_bootstrap() {
 run_termux_repo_bootstrap() {
   local bootstrap_log
   local bootstrap_output
+  local bootstrap_status
 
   log_step 'Executando o bootstrap fino automaticamente dentro do app Termux.'
   bootstrap_log="$(mktemp)"
 
-  if ! bash "$TERMUX_SEND_COMMAND_SCRIPT" --device "$DEVICE_ID" -- "bash $BOOTSTRAP_TARGET" | tee "$bootstrap_log"; then
+  termux::audit_note 'HOST' 'Termux voltou após a reinstalação; preparando o watcher do audit para reaparecer assim que o runner estiver disponível.'
+  termux::audit_reattach_device "$DEVICE_ID"
+
+  (
+    for _ in $(seq 1 180); do
+      if adb -s "$DEVICE_ID" shell "run-as com.termux sh -lc 'export HOME=/data/data/com.termux/files/home; export PREFIX=/data/data/com.termux/files/usr; export PATH=/data/data/com.termux/files/home/bin:/data/data/com.termux/files/usr/bin:/system/bin:/system/xbin; command -v termux-audit-watch >/dev/null 2>&1'" >/dev/null 2>&1; then
+        termux::audit_note 'HOST' 'Audit runner reinstalado no Termux; relançando o watcher visual no app.'
+        termux::audit_reattach_device "$DEVICE_ID"
+        termux::audit_launch_device_watch "$DEVICE_ID"
+        exit 0
+      fi
+      sleep 1
+    done
+    exit 0
+  ) &
+  BOOTSTRAP_AUDIT_HELPER_PID=$!
+
+  set +e
+  bash "$TERMUX_SEND_COMMAND_SCRIPT" --device "$DEVICE_ID" -- "bash $BOOTSTRAP_TARGET" 2>&1 | while IFS= read -r bootstrap_line || [ -n "$bootstrap_line" ]; do
+    printf '%s\n' "$bootstrap_line"
+    printf '%s\n' "$bootstrap_line" >> "$bootstrap_log"
+    case "$bootstrap_line" in
+      \[*\]*|Mirror\ default*|chosen_mirrors=*|Repo\ *|Bootstrap\ do\ repositório*|Payload\ principal:*|Helpers\ instalados:*|-\ /*|DISPLAY=*|XDG_RUNTIME_DIR=*|termux-x11=*|virgl=*|desktop=*|wm=*|virgl-mode=*|openbox-profile=*|driver-profile=*|dbus=*|current-profile=*|default-resolution=*|default-profile=*|Reinicie\ Termux*|Estado\ atual:*)
+        termux::audit_note 'TERMUX' "$bootstrap_line"
+        ;;
+    esac
+  done
+  bootstrap_status=${PIPESTATUS[0]}
+  set -e
+
+  if [ -n "$BOOTSTRAP_AUDIT_HELPER_PID" ]; then
+    wait "$BOOTSTRAP_AUDIT_HELPER_PID" >/dev/null 2>&1 || true
+    BOOTSTRAP_AUDIT_HELPER_PID=""
+  fi
+
+  if [ "$bootstrap_status" -ne 0 ]; then
     bootstrap_output="$(tail -n 120 "$bootstrap_log" || true)"
     rm -f "$bootstrap_log"
     fail \
@@ -591,6 +677,8 @@ run_termux_repo_bootstrap() {
   fi
 
   rm -f "$bootstrap_log"
+  termux::audit_reattach_device "$DEVICE_ID"
+  termux::audit_launch_device_watch "$DEVICE_ID"
   log_ok 'Bootstrap fino executado com sucesso dentro do app Termux.'
 }
 

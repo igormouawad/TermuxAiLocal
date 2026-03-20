@@ -1,0 +1,26 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Etapa que passa",
+      "command": "printf 'primeira etapa ok\\n'"
+    },
+    {
+      "name": "Falha controlada",
+      "description": "Demonstra rc != 0 com continue_on_error=true.",
+      "command": "printf 'falha controlada\\n' >&2; exit 7",
+      "continue_on_error": true,
+      "severity": "warn",
+      "expected_returncodes": [
+        0
+      ]
+    },
+    {
+      "name": "Execução após a falha",
+      "command": "printf 'runner continuou após a falha controlada\\n'"
+    }
+  ]
+}

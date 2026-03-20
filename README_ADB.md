@@ -24,7 +24,27 @@ Seleção de device ADB:
 - com `TERMUXAI_DEVICE_ID` ou `--device SERIAL`, a escolha continua explícita e tem precedência total
 - sem seleção explícita, os wrappers host-side preferem o alvo ADB direto por USB quando ele existir
 - sem USB disponível, os wrappers tentam autodetectar um único alvo por rede/Wi‑Fi
+- se não houver um alvo Wi‑Fi já conectado, os wrappers tentam recuperar automaticamente o ADB por rede nesta ordem:
+  - `adb reconnect offline`
+  - endpoints já vistos pelo `adb devices -l`
+  - descoberta `adb mdns services`
+  - último endpoint Wi‑Fi válido em cache local do host
+  - varredura curta de portas no último IP Wi‑Fi válido em cache local do host
 - em cenários ambíguos, como múltiplos alvos USB ou múltiplos alvos por rede, a execução falha e exige `TERMUXAI_DEVICE_ID=SERIAL` ou `--device SERIAL`
+
+Observação importante sobre persistência:
+
+- em Android 11+ o mecanismo oficial é `Wireless debugging`
+- o workspace consegue recuperar a conexão automaticamente quando o serviço continua disponível e apenas o endpoint mudou
+- o Android não oferece um modo suportado pelo projeto para manter `Wireless debugging` permanentemente ligado através de reboot ou quando o sistema realmente desabilita esse serviço
+- quando o próprio Android desligar o `Wireless debugging`, a recuperação totalmente automática deixa de ser possível sem USB ou intervenção na UI do dispositivo
+- neste Samsung `SM-X736B`, o workspace validou um caminho prático adicional quando o USB está presente:
+  - `settings put global adb_wifi_enabled 1`
+  - descoberta curta da porta de `connect`
+  - `adb connect IP:porta`
+- esse caminho fica encapsulado em:
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_wifi_debug.sh connect`
+- trate esse fluxo como validação específica do device, não como API Android oficialmente documentada e portátil
 
 Tudo que é referente à instalação fica dentro de `Install/`.
 
@@ -72,6 +92,8 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 
 ## Layout operacional
 
+- `Audit/audit_runner.py`: runner visual canônico com modos `exec`, `watch` e `summarize`.
+- `Audit/profiles/`: perfis JSON de referência e smoke tests controlados.
 - `ADB/adb_reset_termux_stack.sh`: reset e preparação do ecossistema Termux.
 - `ADB/adb_configure_phantom_processes.sh`: leitura/aplicação do override recomendado para limitar menos o Android contra `phantom processes`.
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
@@ -81,6 +103,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_stop_termux_x11.sh`: encerra a app Android `Termux:X11` por `adb` sem resetar o ecossistema inteiro.
 - `ADB/adb_set_x11_resolution.sh`: aplicação host-side dos perfis de resolução do Termux:X11.
 - `ADB/adb_termux_send_command.sh`: helper host-side para execução síncrona no contexto do Termux, com `run-as` como caminho preferencial, retorno estruturado de `stdout`/`stderr`/`exit code` e fallback por UI apenas quando necessário.
+- `ADB/adb_wifi_debug.sh`: helper host-side para inspecionar, ligar, desligar e conectar o ADB por Wi‑Fi usando USB como transporte de controle.
 - Para helpers X11/GPU sensíveis, o mesmo wrapper agora suporta disparo no shell real do app Termux com polling estruturado por spool, evitando regressões causadas por namespace divergente do `run-as`.
 
 ## Layout Debian
@@ -113,6 +136,22 @@ Os scripts agora deixam explícito onde a etapa está rodando, sem adicionar loo
 - falhas continuam no contrato único:
   - `FALHA DETECTADA`
 
+Camada visual canônica:
+
+- os wrappers host-side públicos agora também geram uma sessão persistente em `Audit/runs/<session-id>`
+- quando o device ADB está disponível e o runner já foi instalado no Termux, a sessão é espelhada para:
+  - `/data/data/com.termux/files/home/.cache/termux-ai-local/audit/sessions/<session-id>`
+- o app Termux passa a mostrar essa sessão com:
+  - `termux-audit-watch`
+- para o launch automático host-side, o espelho atual também ganha um launcher curto e efêmero:
+  - `~/bin/termux-audit-watch-current`
+- wrappers que reestabilizam o desktop/Termux primeiro e só depois abrem a UI:
+  - o watcher nasce depois do `workspace ready`, para não morrer junto com resets/reaberturas do próprio ecossistema Termux
+- o runner principal instalado no Termux também expõe:
+  - `termux-audit-run`
+  - `termux-audit-summarize`
+- se a UI do Termux não puder ser aberta, os wrappers continuam funcionando no modo textual atual, sem regressão do fluxo operacional
+
 Objetivo:
 
 - mostrar porcentagem e etapa atual
@@ -129,6 +168,7 @@ Objetivo:
 - em cenários ambíguos, exige seleção explícita via `TERMUXAI_DEVICE_ID` ou pelas flags suportadas pelo helper
 - audita os apps Android obrigatórios no usuário principal Android suportado pelo ADB (`--user 0`)
 - transfere o payload `Install/install_termux_stack.sh` para `/data/local/tmp/install_termux_stack.sh`
+- transfere também `Audit/audit_runner.py` e os perfis JSON para `/data/local/tmp/termuxai_audit_*`
 - aplica `chmod +x` no payload
 - garante o desktop mode livre do workspace e restaura `Termux`, `Termux:X11` e o cliente SSH no arranjo aprovado
 - orienta a execução manual do payload
@@ -151,6 +191,7 @@ Objetivo:
   - whitelist de bateria para os três pacotes
   - `SYSTEM_ALERT_WINDOW`, `MANAGE_EXTERNAL_STORAGE`, `WRITE_SETTINGS` e `GET_USAGE_STATS` em `com.termux` e `com.termux.api`
 - reenviа `Install/install_termux_stack.sh` e `Install/install_termux_repo_bootstrap.sh` para `/data/local/tmp`
+- reenviа também o audit runner e os perfis JSON para `/data/local/tmp/termuxai_audit_*`
 - abre `Termux:API`, lança o app `Termux`, espera o shell real ficar pronto e roda o bootstrap fino automaticamente
 - só depois dessa confirmação o fluxo deve seguir para o app Termux com o bootstrap manual
 
@@ -238,6 +279,12 @@ Observação importante sobre perfis Android:
 - agora marca explicitamente no log o contexto `TERMUX`, o comando da etapa e a confirmação de sucesso
 - fixa antes do primeiro `pkg` o mirror default upstream do Termux em `packages-cf.termux.dev` (`main`, `root`, `x11`) e grava `sources.list`/`etc/termux/mirrors/default`
 - atualiza os pacotes via `pkg`, incluindo `pkg update -y` e `pkg upgrade -y`
+- instala `python` no Termux e aplica `python -m pip install --upgrade rich`
+- publica o runner e os perfis em `~/.local/share/termux-ai-local/audit/`
+- instala em `~/bin`:
+  - `termux-audit-run`
+  - `termux-audit-watch`
+  - `termux-audit-summarize`
 - instala `x11-repo` antes dos demais pacotes
 - instala `termux-x11-nightly`, `termux-api`, `virglrenderer-android`, `mesa-demos`, `pulseaudio`, `dbus`, `openbox`, `aterm`, `xterm` e `glmark2`
 - instala também um perfil XFCE funcional com `xfce4-session`, `xfce4-panel`, `xfce4-terminal`, `xfdesktop`, `xfwm4` e `thunar`

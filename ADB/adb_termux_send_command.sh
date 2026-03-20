@@ -15,6 +15,7 @@ FORCE_UI=0
 INTERACTIVE_SHELL=0
 QUIET_OUTPUT=0
 QUIET_FAILURE_TAIL_LINES=80
+AUDIT_OWNER=0
 
 TERMUX_UI_REMOTE="/sdcard/Download/adb_termux_send_command.xml"
 TERMUX_UI_LOCAL="$(mktemp)"
@@ -42,7 +43,13 @@ META_MARKER_END='__CODEX_TERMUX_META_END__'
 EXPECT_TEXTS=()
 
 cleanup() {
+  local exit_code=$?
+
   rm -f "$TERMUX_UI_LOCAL"
+
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_session_finish "$exit_code"
+  fi
 }
 
 trap cleanup EXIT
@@ -509,6 +516,10 @@ run_command_via_run_as() {
   local elapsed_seconds
 
   started_at="$(date +%s)"
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_note 'HOST' 'Transporte selecionado: run-as+spool.'
+    termux::audit_command "$ORIGINAL_COMMAND_TEXT"
+  fi
   start_output="$(run_as_exec_out "$(build_run_as_start_command)")"
   start_request_id="$(sed -n 's/^REQUEST_ID=//p' <<<"$start_output" | head -n 1)"
 
@@ -671,6 +682,10 @@ Request Dir=${REQUEST_DIR}" \
       'Inspecionar a saída capturada, corrigir o helper alvo e repetir a operação.'
   fi
 
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_command_result "$exit_code" "$combined_output"
+  fi
+
   cleanup_run_as_request
   termux::stderr 'Transporte usado: run-as+spool'
   termux::stderr "Request ID: ${REQUEST_ID}"
@@ -723,6 +738,11 @@ run_command_via_interactive_shell() {
 
   if [ "$FOCUS_TERMUX" -eq 1 ] || [ "$REQUIRE_TERMUX_FOCUS" -eq 1 ]; then
     ensure_termux_focus
+  fi
+
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_note 'HOST' 'Transporte selecionado: interactive-shell+spool.'
+    termux::audit_command "$ORIGINAL_COMMAND_TEXT"
   fi
 
   send_command_text_via_ui "$prepared_launcher"
@@ -884,6 +904,10 @@ Request Dir=${REQUEST_DIR}" \
       'Inspecionar a saída capturada, corrigir o helper alvo e repetir a operação.'
   fi
 
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_command_result "$exit_code" "$combined_output"
+  fi
+
   cleanup_run_as_request
   termux::stderr 'Transporte usado: interactive-shell+spool'
   termux::stderr "Request ID: ${REQUEST_ID}"
@@ -898,6 +922,11 @@ run_command_via_ui() {
     ensure_termux_focus
   fi
 
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_note 'HOST' 'Transporte selecionado: ui-fallback.'
+    termux::audit_command "$ORIGINAL_COMMAND_TEXT"
+  fi
+
   send_command_text_via_ui "$COMMAND_TEXT"
 
   if [ "$PRESS_ENTER" -eq 1 ]; then
@@ -906,6 +935,10 @@ run_command_via_ui() {
 
   if [ "${#EXPECT_TEXTS[@]}" -gt 0 ] && [ "$TIMEOUT_SECONDS" -gt 0 ]; then
     wait_for_termux_text "$TIMEOUT_SECONDS"
+  fi
+
+  if [ "${AUDIT_OWNER:-0}" -eq 1 ] 2>/dev/null; then
+    termux::audit_command_result 0 'Comando enviado via fallback de UI sem erro explícito.'
   fi
 
   termux::stderr "Transporte usado: ui-fallback"
@@ -1001,6 +1034,13 @@ fi
 
 ORIGINAL_COMMAND_TEXT="$COMMAND_TEXT"
 
+termux::audit_session_begin 'Comando direto no Termux' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+if [ "$AUDIT_OWNER" -eq 1 ] 2>/dev/null; then
+  termux::audit_step_begin 1 1 'HOST' 'Executando comando direto no Termux' 100
+  termux::audit_note 'HOST' "Dispositivo alvo: ${DEVICE_ID}"
+fi
+
 if [ "$FORCE_UI" -eq 1 ] && [ "$INTERACTIVE_SHELL" -eq 1 ]; then
   fail \
     'validação de argumentos' \
@@ -1015,6 +1055,10 @@ elif [ "$FORCE_UI" -eq 0 ] && run_as_supported; then
   run_command_via_run_as
 else
   run_command_via_ui
+fi
+
+if [ "$AUDIT_OWNER" -eq 1 ] 2>/dev/null; then
+  termux::audit_step_finish 'OK' 1 1 'HOST' 'Comando direto no Termux concluído.' 100
 fi
 
 termux::stderr "Comando enviado ao Termux no dispositivo ${DEVICE_ID}."

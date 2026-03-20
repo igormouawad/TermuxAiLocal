@@ -10,6 +10,17 @@ FOCUS_APP="termux"
 REBOOT_IF_NEEDED=0
 TOTAL_STEPS=3
 CURRENT_STEP=0
+AUDIT_OWNER=0
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 fail() {
   termux::fail "$@"
@@ -119,6 +130,8 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID=$(termux::resolve_target_device)
+termux::audit_session_begin 'Reset do ecossistema Termux' "$0" "$DEVICE_ID"
+AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 step_begin 'Encerrando apps Android e resíduos controlados do ecossistema Termux'
 kill_termux_side_processes
@@ -170,6 +183,7 @@ if [ "$workspace_ready" -ne 1 ]; then
     'Repetir o reset, preferencialmente com --reboot-if-needed, para reconstruir o layout operacional do projeto.'
 fi
 step_ok 'Desktop livre reconstruído com sucesso no Android.'
+termux::audit_launch_device_watch "$DEVICE_ID"
 
 printf 'Ecossistema Termux reiniciado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Foco final solicitado: %s\n' "$FOCUS_APP"
