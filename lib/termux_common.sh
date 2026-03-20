@@ -635,6 +635,96 @@ termux::adb_cache_network_endpoint() {
   printf '%s\n' "$ip_part" > "$ip_file"
 }
 
+termux::ssh_remote_ip() {
+  if [ -n "${SSH_CONNECTION:-}" ]; then
+    printf '%s\n' "${SSH_CONNECTION%% *}"
+    return 0
+  fi
+
+  if [ -n "${SSH_CLIENT:-}" ]; then
+    printf '%s\n' "${SSH_CLIENT%% *}"
+    return 0
+  fi
+
+  return 1
+}
+
+termux::known_android_ip() {
+  local cached_ip cached_endpoint
+
+  if [ -n "${TERMUXAI_LAST_ANDROID_IP:-}" ]; then
+    printf '%s\n' "${TERMUXAI_LAST_ANDROID_IP}"
+    return 0
+  fi
+
+  cached_ip="$(termux::adb_cached_network_ip)"
+  if [ -n "$cached_ip" ]; then
+    printf '%s\n' "$cached_ip"
+    return 0
+  fi
+
+  cached_endpoint="$(termux::adb_cached_network_endpoint)"
+  case "$cached_endpoint" in
+    *:*)
+      printf '%s\n' "${cached_endpoint%%:*}"
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+termux::operator_context() {
+  local requested_context="${TERMUXAI_OPERATOR_CONTEXT:-auto}"
+  local remote_ip known_ip
+
+  case "$requested_context" in
+    android_ssh|local_workstation)
+      printf '%s\n' "$requested_context"
+      return 0
+      ;;
+    auto|'')
+      ;;
+    *)
+      requested_context='auto'
+      ;;
+  esac
+
+  remote_ip="$(termux::ssh_remote_ip 2>/dev/null || true)"
+  known_ip="$(termux::known_android_ip 2>/dev/null || true)"
+
+  if [ -n "$remote_ip" ] && [ -n "$known_ip" ] && [ "$remote_ip" = "$known_ip" ]; then
+    printf '%s\n' 'android_ssh'
+    return 0
+  fi
+
+  printf '%s\n' 'local_workstation'
+}
+
+termux::no_device_next_step() {
+  local recovery_attempted="${1:-0}"
+  local operator_context
+
+  operator_context="$(termux::operator_context)"
+
+  case "$operator_context" in
+    android_ssh)
+      if [ "$recovery_attempted" -eq 1 ] 2>/dev/null; then
+        printf '%s' 'Ative manualmente a Depuração por Wi‑Fi no tablet; a recuperação automática já testou os endpoints conhecidos e você pode repetir o mesmo comando em seguida.'
+      else
+        printf '%s' 'Ative manualmente a Depuração por Wi‑Fi no tablet e repita o mesmo comando.'
+      fi
+      ;;
+    *)
+      if [ "$recovery_attempted" -eq 1 ] 2>/dev/null; then
+        printf '%s' 'Conecte o tablet por USB ao workstation Linux e repita o comando; esse é o caminho de recuperação validado quando o ADB por Wi‑Fi não está mais disponível.'
+      else
+        printf '%s' 'Conecte o tablet por USB ao workstation Linux e repita o comando.'
+      fi
+      ;;
+  esac
+}
+
 termux::adb_network_device_present() {
   local device_list="$1"
 
@@ -823,8 +913,8 @@ termux::resolve_single_device() {
   refresh_device_list
 
   if [ "$device_count" -eq 0 ]; then
+    recovery_attempted=1
     if termux::adb_attempt_wifi_recovery; then
-      recovery_attempted=1
       refresh_device_list
     fi
   fi
@@ -861,13 +951,7 @@ termux::resolve_single_device() {
       'adb devices -l' \
       "$device_list" \
       'Nenhum dispositivo em estado device foi encontrado.' \
-      "$(
-        if [ "$recovery_attempted" -eq 1 ]; then
-          printf '%s' 'A recuperação automática de ADB por Wi‑Fi não encontrou um endpoint válido; verificar se Wireless debugging continua ligado no Android ou conectar via USB.'
-        else
-          printf '%s' 'Conectar via USB ou manter Wireless debugging ligado; os wrappers agora tentam recuperar automaticamente o último endpoint Wi‑Fi conhecido antes de falhar.'
-        fi
-      )"
+      "$(termux::no_device_next_step "$recovery_attempted")"
   fi
 
   termux::fail \

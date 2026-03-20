@@ -38,6 +38,10 @@ Observação importante sobre persistência:
 - o workspace consegue recuperar a conexão automaticamente quando o serviço continua disponível e apenas o endpoint mudou
 - o Android não oferece um modo suportado pelo projeto para manter `Wireless debugging` permanentemente ligado através de reboot ou quando o sistema realmente desabilita esse serviço
 - quando o próprio Android desligar o `Wireless debugging`, a recuperação totalmente automática deixa de ser possível sem USB ou intervenção na UI do dispositivo
+- quando não houver USB e a recuperação automática por Wi‑Fi falhar:
+  - se o Codex estiver rodando por SSH a partir do próprio tablet (`Terminus`), o próximo passo recomendado deve ser ativar manualmente `Wireless debugging`
+  - se o Codex estiver rodando localmente no workstation Linux, o próximo passo recomendado deve ser conectar o tablet por USB
+- o helper comum detecta esse contexto automaticamente por `SSH_CONNECTION`/`SSH_CLIENT` combinados com o IP Android conhecido em cache; para depuração, o comportamento pode ser forçado com `TERMUXAI_OPERATOR_CONTEXT=android_ssh|local_workstation|auto`
 - neste Samsung `SM-X736B`, o workspace validou um caminho prático adicional quando o USB está presente:
   - `settings put global adb_wifi_enabled 1`
   - descoberta curta da porta de `connect`

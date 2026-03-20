@@ -312,6 +312,10 @@ Do not treat this file as a historical changelog.
   - official Android scope limit:
     - the workspace can auto-reconnect only while `Wireless debugging` is still enabled by Android
     - there is no supported project path to force `Wireless debugging` to remain permanently enabled across reboot or when Android itself disables it after network/idle changes
+  - current operator-guidance rule is now explicit:
+    - if there is no USB and Wi‑Fi recovery still fails while Codex is running over SSH from the tablet (`Terminus`), the failure message must tell the operator to enable `Wireless debugging` manually on the tablet
+    - if the same no-device condition happens while Codex is running locally on the workstation, the failure message must tell the operator to connect the tablet by USB
+    - the shared helper now derives this context from `SSH_CONNECTION`/`SSH_CLIENT` plus the cached Android Wi‑Fi IP, with optional override through `TERMUXAI_OPERATOR_CONTEXT=android_ssh|local_workstation|auto`
   - current Samsung-specific escalation path now validated on the live USB tablet `<ADB_USB_SERIAL>`:
     - after reboot, `adb_wifi_enabled` returned to `0`
     - with USB still present, the host successfully restored Wi‑Fi ADB by:
