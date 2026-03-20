@@ -482,15 +482,31 @@ install_distro_if_needed() {
 }
 
 copy_payloads_into_distro() {
+  local rootfs_dir="${PREFIX}/var/lib/proot-distro/installed-rootfs/${DISTRO_ALIAS}"
+  local config_source="${USER_CONFIG_LOCAL:-${USER_CONFIG_SOURCE:-}}"
+
   proot-distro copy "$ROOT_SCRIPT_LOCAL" "${DISTRO_ALIAS}:${ROOT_SCRIPT_DISTRO}"
   proot-distro copy "$USER_SCRIPT_LOCAL" "${DISTRO_ALIAS}:${USER_SCRIPT_DISTRO}"
-  if [ -n "$USER_CONFIG_LOCAL" ]; then
-    proot-distro copy "$USER_CONFIG_LOCAL" "${DISTRO_ALIAS}:${USER_CONFIG_DISTRO}"
+  if [ -z "$config_source" ]; then
+    fail \
+      'preservação da configuração segura do usuário Debian' \
+      'Nenhum arquivo de configuração do usuário ficou disponível após a coleta dos dados.' \
+      'A configuração root do Debian ficaria sem usuário, senha hash e política de sudo.' \
+      'Reenviar a configuração segura do usuário e repetir a instalação.'
   fi
+  if [ ! -f "$config_source" ]; then
+    fail \
+      "test -f \"$config_source\"" \
+      'Arquivo de configuração do usuário Debian não está mais disponível no host Termux.' \
+      'A configuração root do Debian ficaria sem os dados do usuário alvo.' \
+      'Reenviar a configuração segura do usuário e repetir a instalação.'
+  fi
+  mkdir -p "$(dirname "${rootfs_dir}${USER_CONFIG_DISTRO}")"
+  install -m 600 "$config_source" "${rootfs_dir}${USER_CONFIG_DISTRO}"
+  test -f "${rootfs_dir}${USER_CONFIG_DISTRO}"
+  printf 'Arquivo de configuração Debian copiado em %s.\n' "${rootfs_dir}${USER_CONFIG_DISTRO}"
   proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- chmod 755 "$ROOT_SCRIPT_DISTRO" "$USER_SCRIPT_DISTRO"
-  if [ -n "$USER_CONFIG_LOCAL" ]; then
-    proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- chmod 600 "$USER_CONFIG_DISTRO"
-  fi
+  proot-distro login --no-arch-warning "$DISTRO_ALIAS" -- chmod 600 "$USER_CONFIG_DISTRO"
 }
 
 configure_root_payload() {

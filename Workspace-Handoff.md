@@ -90,9 +90,12 @@ Do not treat this file as a historical changelog.
   - issues found and fixed during that runtime round:
     - `adb_validate_baseline.sh` now accepts both `--profile=openbox-maxperf` and `--profile openbox-maxperf`
     - `adb_reinstall_termux_official.sh --dry-run` now reports the correct total step count (`7/7` instead of `7/8`)
-  - remaining runtime gap from that same round:
-    - the current Termux runtime on the tablet does not have `run-gui-debian` installed in `~/bin`, so Debian GUI launch could not be revalidated from the host in this round
-    - this is an environment-state gap on the device, not a proven regression in the refactored host-side progress telemetry
+  - the Debian GUI runtime gap from that same round is now closed:
+    - `adb_provision_debian_trixie_gui.sh` was rerun on the live USB target `<ADB_USB_SERIAL>`
+    - `adb_install_debian_trixie_gui.sh` now also supports non-interactive password input through `TERMUXAI_DEBIAN_PASSWORD_HASH` or `TERMUXAI_DEBIAN_PASSWORD`
+    - the current Termux runtime now exposes both `run-gui-debian` and `login-debian-gui` in `~/bin`
+    - direct host validation now passes again with:
+      - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 - Important no-regression decision:
   - a live probe confirmed that `adb_termux_send_command.sh --interactive-shell -- 'termux-stack-status --brief'` is still fragile on the current device state
   - therefore `adb_validate_baseline.sh` was intentionally kept on the already validated `run-as+spool` path for its Termux commands
@@ -339,11 +342,13 @@ Important:
     - `Termux`: task `155` in `[32,96][1105,742]`
     - `Termux:X11`: task `156` in `[1129,96][2528,944]`
     - `Terminus`: task `157` in `[32,749][1105,1488]`
-- Current Debian GUI runtime gap on the live tablet:
-  - `run-gui-debian` is currently absent from `~/bin` in the active Termux runtime
-  - direct host launch therefore failed with:
-    - `/data/data/com.termux/files/usr/bin/bash: line 1: run-gui-debian: command not found`
-  - if Debian GUI needs to be revalidated again in this device state, reinstall or reapply the Debian GUI host flow first and collect/operator-confirm the Debian credentials as required
+- Current Debian GUI state on the live tablet:
+  - `run-gui-debian` and `login-debian-gui` are present again in `~/bin`
+  - the host-side Debian reinstall/reapply flow passed on the current clean Termux base
+  - `xeyes` was revalidated successfully through the Termux-side Debian launcher:
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
+  - latest validated stack probe after the Debian GUI rerun:
+    - `X11=display-ready VIRGL=ativo MODE=plain DESKTOP=openbox WM=openbox RES=1280x720 PROFILE=performance OPENBOX_PROFILE=openbox-maxperf DRIVER=virgl-plain DBUS=active DISPLAY=:1`
 - The current payloads also ship the Termux-side interactive menu:
   - source in repo: `~/Documentos/AI/TermuxAiLocal/Install/termux_workspace_menu.sh`
   - installed helper in Termux: `~/bin/termux-workspace-menu`
@@ -372,6 +377,10 @@ Important:
   - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
 
 ## Latest Host / Device Fixes
+- `Debian/adb_install_debian_trixie_gui.sh` now accepts non-interactive Debian password input from the host through `TERMUXAI_DEBIAN_PASSWORD_HASH` and fallback `TERMUXAI_DEBIAN_PASSWORD`, while preserving the existing interactive prompt flow.
+- `Debian/adb_install_debian_trixie_gui.sh` now stages the temporary user config through `/data/local/tmp`, then copies it into the private Termux tmp via `run-as com.termux`, avoiding previous permission mismatches during `source`.
+- `Debian/install_debian_trixie_gui.sh` now copies the generated user config directly into the Debian rootfs before running the root payload, and fails early if the config source is missing instead of continuing into a broken root/user configuration.
+- `Debian/configure_debian_trixie_user.sh` now exports `TERMUX_X11_DISTRO_USER` in `env.sh`, and the generated `sync-termux-desktop-entries` helper resolves the current Debian user from runtime environment instead of relying on an unset template variable.
 - The launcher catalog on the live device was pruned again and dead entries were removed from the exported Debian app set.
 - The current useful Debian launcher exports now include:
   - `FreeCAD`

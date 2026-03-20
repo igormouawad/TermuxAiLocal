@@ -156,6 +156,7 @@ export TERMUX_GUI_RENDERER="\${TERMUX_GUI_RENDERER:-hardware}"
 export TERMUX_GUI_PULSE_SERVER="\${TERMUX_GUI_PULSE_SERVER:-\${PULSE_SERVER:-127.0.0.1}}"
 export PULSE_SERVER="\${PULSE_SERVER:-\$TERMUX_GUI_PULSE_SERVER}"
 export GALLIUM_DRIVER="\${GALLIUM_DRIVER:-virpipe}"
+export TERMUX_X11_DISTRO_USER="\${TERMUX_X11_DISTRO_USER:-${EXPECTED_USER}}"
 export TERMUX_HOST_HOME="\${TERMUX_HOST_HOME:-/data/data/com.termux/files/home}"
 export TERMUX_HOST_APPLICATIONS_DIR="\${TERMUX_HOST_APPLICATIONS_DIR:-\$TERMUX_HOST_HOME/.local/share/applications}"
 export TERMUX_HOST_DEBIAN_WRAPPERS_DIR="\${TERMUX_HOST_DEBIAN_WRAPPERS_DIR:-\$TERMUX_HOST_HOME/bin/debian-apps}"
@@ -737,11 +738,12 @@ if [ -f "$ENV_FILE" ]; then
   . "$ENV_FILE"
 fi
 
+expected_user="${TERMUX_X11_DISTRO_USER:-$(id -un)}"
 host_home="${TERMUX_HOST_HOME:-/data/data/com.termux/files/home}"
 applications_dir="${TERMUX_HOST_APPLICATIONS_DIR:-$host_home/.local/share/applications}"
 wrappers_dir="${TERMUX_HOST_DEBIAN_WRAPPERS_DIR:-$host_home/bin/debian-apps}"
 host_data_home="$host_home/.local/share"
-managed_prefix="debian-${EXPECTED_USER}-"
+managed_prefix="debian-${expected_user}-"
 
 safe_slug() {
   printf '%s' "$1" | tr -cs 'A-Za-z0-9._-' '-'

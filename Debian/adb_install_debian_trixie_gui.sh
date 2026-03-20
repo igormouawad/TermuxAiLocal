@@ -13,6 +13,7 @@ PROOT_USER=""
 PROOT_SUDO_MODE=""
 PROOT_USER_PASSWORD_HASH=""
 USER_CONFIG_LOCAL=""
+USER_CONFIG_STAGE=""
 USER_CONFIG_REMOTE=""
 TOTAL_STEPS=4
 CURRENT_STEP=0
@@ -35,8 +36,12 @@ cleanup() {
     rm -f "$USER_CONFIG_LOCAL"
   fi
 
+  if [ -n "${USER_CONFIG_STAGE:-}" ] && [ -n "${DEVICE_ID:-}" ]; then
+    adb -s "$DEVICE_ID" shell rm -f "$USER_CONFIG_STAGE" >/dev/null 2>&1 || true
+  fi
+
   if [ -n "${USER_CONFIG_REMOTE:-}" ] && [ -n "${DEVICE_ID:-}" ]; then
-    adb -s "$DEVICE_ID" shell rm -f "$USER_CONFIG_REMOTE" >/dev/null 2>&1 || true
+    adb -s "$DEVICE_ID" shell "run-as com.termux sh -lc $(printf '%q' "rm -f $USER_CONFIG_REMOTE")" >/dev/null 2>&1 || true
   fi
 }
 
@@ -89,18 +94,38 @@ hash_password_from_stdin() {
   openssl passwd -6 -stdin
 }
 
+resolve_noninteractive_user_setup() {
+  if [ -z "$PROOT_USER_PASSWORD_HASH" ] && [ -n "${TERMUXAI_DEBIAN_PASSWORD_HASH:-}" ]; then
+    PROOT_USER_PASSWORD_HASH="$TERMUXAI_DEBIAN_PASSWORD_HASH"
+  fi
+
+  if [ -z "$PROOT_USER_PASSWORD_HASH" ] && [ -n "${TERMUXAI_DEBIAN_PASSWORD:-}" ]; then
+    PROOT_USER_PASSWORD_HASH="$(printf '%s' "$TERMUXAI_DEBIAN_PASSWORD" | hash_password_from_stdin)"
+  fi
+
+  if [ -n "$PROOT_USER" ] && [ -n "$PROOT_SUDO_MODE" ] && [ -n "$PROOT_USER_PASSWORD_HASH" ]; then
+    return 0
+  fi
+
+  return 1
+}
+
 collect_user_setup_interactively() {
   local username="$PROOT_USER"
   local password_one=""
   local password_two=""
   local sudo_answer=""
 
+  if resolve_noninteractive_user_setup; then
+    return 0
+  fi
+
   if [ ! -t 0 ] || [ ! -t 1 ]; then
     fail \
       'coleta interativa da configuração Debian' \
-      'O wrapper host-side precisa perguntar nome, senha e política de sudo, mas a shell atual não é interativa.' \
+      'O wrapper host-side precisa perguntar nome, senha e política de sudo, mas a shell atual não é interativa e nenhuma senha foi fornecida por ambiente.' \
       'O usuário Debian não pode ser definido com segurança neste contexto.' \
-      'Executar o wrapper em um terminal interativo.'
+      'Executar o wrapper em um terminal interativo ou definir TERMUXAI_DEBIAN_PASSWORD_HASH.'
   fi
 
   while :; do
@@ -213,6 +238,7 @@ while [ "$#" -gt 0 ]; do
       printf 'Uso: %s [--alias nome] [--reset-distro] [--user nome] [--sudo-mode password|nopasswd]\n' "$0"
       printf '  Executa de forma síncrona o payload /data/local/tmp/install_debian_trixie_gui.sh no shell real do app Termux.\n'
       printf '  O wrapper pergunta nome do usuário, senha e política de sudo antes de iniciar a configuração Debian.\n'
+      printf '  Para automação não interativa, exporte TERMUXAI_DEBIAN_PASSWORD_HASH ou TERMUXAI_DEBIAN_PASSWORD.\n'
       exit 0
       ;;
     *)
@@ -249,10 +275,12 @@ fi
 step_ok 'Desktop livre pronto para o payload Debian.'
 
 step_begin 'Enviando a configuração segura do usuário para o dispositivo'
-USER_CONFIG_REMOTE="/data/local/tmp/debian-user-setup-${DEVICE_ID}-$$.env"
-run_adb push "$USER_CONFIG_LOCAL" "$USER_CONFIG_REMOTE" >/dev/null
-run_adb shell chmod 600 "$USER_CONFIG_REMOTE" >/dev/null
-step_ok 'Arquivo temporário de configuração Debian enviado ao device.'
+USER_CONFIG_STAGE="/data/local/tmp/debian-user-setup-stage-${DEVICE_ID}-$$.env"
+USER_CONFIG_REMOTE="/data/data/com.termux/files/usr/tmp/debian-user-setup-${DEVICE_ID}-$$.env"
+run_adb push "$USER_CONFIG_LOCAL" "$USER_CONFIG_STAGE" >/dev/null
+run_adb shell chmod 644 "$USER_CONFIG_STAGE" >/dev/null
+run_adb shell "run-as com.termux sh -lc $(printf '%q' "install -m 600 $USER_CONFIG_STAGE $USER_CONFIG_REMOTE")" >/dev/null
+step_ok 'Arquivo temporário de configuração Debian copiado para o tmp privado do app Termux.'
 
 install_command='bash /data/local/tmp/install_debian_trixie_gui.sh'
 if [ "${#FORWARDED_ARGS[@]}" -gt 0 ]; then
@@ -260,6 +288,10 @@ if [ "${#FORWARDED_ARGS[@]}" -gt 0 ]; then
     install_command="$(termux::append_shell_word "$install_command" "$arg")"
   done
 fi
+install_command="$(termux::append_shell_word "$install_command" --user)"
+install_command="$(termux::append_shell_word "$install_command" "$PROOT_USER")"
+install_command="$(termux::append_shell_word "$install_command" --sudo-mode)"
+install_command="$(termux::append_shell_word "$install_command" "$PROOT_SUDO_MODE")"
 install_command="$(termux::append_shell_word "$install_command" --user-config)"
 install_command="$(termux::append_shell_word "$install_command" "$USER_CONFIG_REMOTE")"
 
