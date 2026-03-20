@@ -12,6 +12,37 @@ Use it for:
 Do not treat this file as a historical changelog.
 
 ## Current Script Audit State
+- Current regression-runner state:
+  - the workspace now has a single host-side regression wrapper:
+    - `~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh`
+  - supported suites:
+    - `smoke`
+    - `daily`
+    - `desktop-layout`
+    - `full`
+  - purpose:
+    - give the repo one parent audit session for maintenance runs
+    - preserve the canonical wrappers as the source of truth
+    - add a visual desktop-mode regression after the validated daily flow
+  - current desktop-layout regression model:
+    - rebuild the approved trio
+    - open a primary Android app in desktop mode via `adb_open_desktop_app.sh`
+    - try a compatible secondary Android app when available
+    - validate explicit `--reflow-only` without opening a new app
+  - new audit reference profiles now available:
+    - `Audit/profiles/workspace_host_smoke_openbox.json`
+    - `Audit/profiles/workspace_host_daily_flow.json`
+    - `Audit/profiles/workspace_desktop_layout_regression.json`
+    - `Audit/profiles/workspace_full_regression.json`
+  - `ADB/adb_open_desktop_app.sh` now also supports:
+    - `--reflow-only`
+  - behavior of `--reflow-only`:
+    - if a package/component is provided, it reflows that visible app as the main window
+    - without a package, it picks the most recent visible non-core app already on screen
+    - if no extra visible app exists, it fails explicitly instead of inventing a target
+  - current context-aware desktop policy:
+    - in `android_ssh`, preserve the classic trio with `Termux` top-left, `Terminus` bottom-left and `Termux:X11` on the right
+    - in `local_workstation`, do not reopen `Terminus` by default; keep `Termux` enlarged on the left and `Termux:X11` on the right
 - Workspace migration state is now consolidated for active tooling:
   - the workspace itself no longer contains references to the pre-`AI/` project root
   - active Codex state now points to `~/Documentos/AI/TermuxAiLocal`
@@ -200,20 +231,26 @@ Do not treat this file as a historical changelog.
 - Daily profile: `openbox-maxperf`
 - Accepted 3D path: `VirGL plain` with `GALLIUM_DRIVER=virpipe`
 - Display baseline: `Termux:X11` on `DISPLAY=:1`
-- Preferred manual Android desktop layout: freeform trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+- Preferred manual Android desktop layout is now contextual:
+  - in `android_ssh`: freeform trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+  - in `local_workstation`: `Termux` enlarged on the left and `Termux:X11` on the right, without reopening `Terminus`
 - Shared-device coordination rule:
   - while the operator is using the Android tablet for unrelated work, do not touch the device via ADB
   - before any new device-side execution, ask the operator to stop using the tablet and restore the approved desktop trio if needed
   - only then continue host-side automation, testing, or validation
 - Approved bounds on the current tablet (`2560x1600` landscape):
-  - `Termux`: `[32,96][1105,742]`
-  - `Terminus`: `[32,749][1105,1488]`
-  - `Termux:X11`: `[1129,96][2528,944]`
+  - `android_ssh`:
+    - `Termux`: `[32,96][1105,742]`
+    - `Terminus`: `[32,749][1105,1488]`
+    - `Termux:X11`: `[1129,96][2528,944]`
+  - `local_workstation`:
+    - `Termux`: `[32,96][1105,1488]`
+    - `Termux:X11`: `[1129,96][2528,944]`
 - Canonical helper for that manual desktop layout:
-  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh`
 - Current validated behavior of that helper:
   - after a cold Android reboot, the helper now reapplies the freeform layout after the Openbox/X11 session is ensured
-  - this avoids the post-boot regression where `Termux` or `Terminus` could be relaunched fullscreen and escape the approved desktop arrangement
+  - this avoids the post-boot regression where managed windows could be relaunched fullscreen and escape the approved desktop arrangement
   - latest end-to-end reboot validation on the live tablet passed with this exact sequence:
     - force-stop `com.termux.api`, `com.termux.x11`, `com.termux`, and `com.server.auditor.ssh.client`
     - `adb_desktop_mode.sh off`
@@ -472,10 +509,7 @@ Important:
   - `adb_start_desktop.sh` showed `[HOST]` / `[HOST:OK]` on the host and preserved the expected Termux-side output
   - `adb_set_x11_resolution.sh` correctly switched between `balanced` (`1920x1080`) and `performance` (`1280x720`)
   - `adb_run_x11_command.sh` successfully launched a lightweight `aterm` in X11 with the new progress output
-  - `adb_consolidate_freeform_desktop.sh --restart --focus ssh` restored:
-    - `Termux`: task `155` in `[32,96][1105,742]`
-    - `Termux:X11`: task `156` in `[1129,96][2528,944]`
-    - `Terminus`: task `157` in `[32,749][1105,1488]`
+  - `adb_consolidate_freeform_desktop.sh --restart` restored the contextual desktop layout expected by the current operator context
 - Current Debian GUI state on the live tablet:
   - `run-gui-debian` and `login-debian-gui` are present again in `~/bin`
   - the host-side Debian reinstall/reapply flow passed on the current clean Termux base

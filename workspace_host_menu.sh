@@ -115,6 +115,18 @@ handler_daily_flow() {
   run_termux_device_command --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'
 }
 
+handler_workspace_regression_smoke() {
+  run_workspace_script "ADB/adb_run_workspace_regression.sh" --suite smoke
+}
+
+handler_workspace_regression_full() {
+  run_workspace_script "ADB/adb_run_workspace_regression.sh" --suite full
+}
+
+handler_workspace_regression_desktop_layout() {
+  run_workspace_script "ADB/adb_run_workspace_regression.sh" --suite desktop-layout
+}
+
 handler_reset_focus() {
   run_workspace_script "ADB/adb_reset_termux_stack.sh" --focus "$1"
 }
@@ -144,11 +156,11 @@ handler_start_openbox() {
 }
 
 handler_consolidate_freeform_desktop() {
-  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --focus ssh
+  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh"
 }
 
 handler_restart_freeform_desktop() {
-  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --restart --focus ssh
+  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --restart
 }
 
 handler_open_settings_desktop() {
@@ -277,6 +289,33 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "Fluxo canonicamente completo do workspace em 7 passos."
 
   add_action \
+    "regression_smoke" \
+    "Fluxos canonicos" \
+    "Regressão canônica curta do workspace" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite smoke" \
+    "handler_workspace_regression_smoke" \
+    "1" \
+    "Wrapper único para reset, subida do desktop e validação baseline com audit pai."
+
+  add_action \
+    "regression_full" \
+    "Fluxos canonicos" \
+    "Regressão completa do workspace" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full" \
+    "handler_workspace_regression_full" \
+    "1" \
+    "Smoke diário completo mais regressão visual do desktop mode com app extra e reflow."
+
+  add_action \
+    "desktop_layout_regression" \
+    "Fluxos canonicos" \
+    "Regressão visual do desktop mode" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite desktop-layout" \
+    "handler_workspace_regression_desktop_layout" \
+    "0" \
+    "Reconstroi o trio, abre app principal, tenta um secundário compatível e valida o reflow explícito."
+
+  add_action \
     "reset_termux" \
     "ADB / Termux" \
     "Resetar ecossistema com foco final no Termux" \
@@ -306,20 +345,20 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
   add_action \
     "freeform_consolidate" \
     "ADB / Termux" \
-    "Consolidar desktop livre aprovado" \
-    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh" \
+    "Consolidar desktop livre aprovado (contextual)" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh" \
     "handler_consolidate_freeform_desktop" \
     "0" \
-    "Aplica o layout aprovado: Termux no topo esquerdo, Terminus embaixo e Termux:X11 à direita."
+    "Aplica o layout aprovado por contexto: no workstation, Termux ampliado + Termux:X11; no android_ssh, mantém o trio com Terminus."
 
   add_action \
     "freeform_restart" \
     "ADB / Termux" \
-    "Fechar e reconstruir desktop livre aprovado" \
-    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh" \
+    "Fechar e reconstruir desktop livre aprovado (contextual)" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart" \
     "handler_restart_freeform_desktop" \
     "1" \
-    "Reconstrói o layout livre aprovado; use com cautela porque o cliente SSH Android pode não retomar a sessão sozinho."
+    "Reconstrói o layout livre aprovado; no workstation, não reabre Terminus por padrão."
 
   add_action \
     "desktop_open_settings" \

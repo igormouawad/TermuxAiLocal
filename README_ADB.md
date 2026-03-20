@@ -102,14 +102,35 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_configure_phantom_processes.sh`: leitura/aplicação do override recomendado para limitar menos o Android contra `phantom processes`.
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
 - `ADB/adb_start_desktop.sh`: subida host-side do desktop suportado.
-- `ADB/adb_consolidate_freeform_desktop.sh`: consolida o trio `Termux` + `Termux:X11` + cliente SSH em desktop mode/freeform, com layout reprodutível em janelas e opção de fechar/reabrir tudo.
-- `ADB/adb_open_desktop_app.sh`: entrypoint canônico para abrir um app Android visível em desktop mode, preservando o trio base e aplicando o layout `Foco grande`.
+- `ADB/adb_consolidate_freeform_desktop.sh`: consolida o desktop mode aprovado de forma contextual: no workstation local, `Termux` ampliado + `Termux:X11`; em `android_ssh`, mantém o trio com cliente SSH.
+- `ADB/adb_open_desktop_app.sh`: entrypoint canônico para abrir um app Android visível em desktop mode, preservando o workspace base contextual e aplicando o layout `Foco grande`.
+- `ADB/adb_open_desktop_app.sh --reflow-only`: reaplica o layout atual do desktop mode sem abrir uma activity nova; sem `--package`, escolhe o app extra visível mais recente como janela principal do reflow.
+- `ADB/adb_run_workspace_regression.sh`: wrapper host-side único para regressão canônica do workspace, com suites `smoke`, `daily`, `desktop-layout` e `full`.
 - `ADB/adb_run_x11_command.sh`: execução remota de apps e scripts no display X11 `:1`.
 - `ADB/adb_stop_termux_x11.sh`: encerra a app Android `Termux:X11` por `adb` sem resetar o ecossistema inteiro.
 - `ADB/adb_set_x11_resolution.sh`: aplicação host-side dos perfis de resolução do Termux:X11.
 - `ADB/adb_termux_send_command.sh`: helper host-side para execução síncrona no contexto do Termux, com `run-as` como caminho preferencial, retorno estruturado de `stdout`/`stderr`/`exit code` e fallback por UI apenas quando necessário.
 - `ADB/adb_wifi_debug.sh`: helper host-side para inspecionar, ligar, desligar e conectar o ADB por Wi‑Fi usando USB como transporte de controle.
 - Para helpers X11/GPU sensíveis, o mesmo wrapper agora suporta disparo no shell real do app Termux com polling estruturado por spool, evitando regressões causadas por namespace divergente do `run-as`.
+
+Fluxo único de regressão recomendado para manutenção:
+
+```bash
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full
+```
+
+Esse wrapper:
+
+- abre uma sessão pai única de audit para todo o fluxo
+- reutiliza os wrappers já validados do workspace
+- mantém o fluxo diário canônico intacto
+- acrescenta a regressão visual do desktop mode com `adb_open_desktop_app.sh`
+- termina testando o reflow explícito sem abrir um app novo
+
+Observação:
+
+- o wrapper de regressão não substitui o mapeamento natural já documentado para `fluxo diario limpo completo`; ele é um entrypoint de manutenção e regressão
+- no contexto local do workstation, o layout base não reabre `Terminus`; o `Termux` ocupa a coluna esquerda ampliada por padrão
 
 ## Layout Debian
 
@@ -233,22 +254,29 @@ Objetivo:
 
 `ADB/adb_consolidate_freeform_desktop.sh`:
 
-- abre `Termux`, `Termux:X11` e o cliente SSH escolhido diretamente em `windowingMode=freeform`
-- aplica por padrão o layout aprovado no tablet atual:
-  - `Termux` no topo esquerdo
-  - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) embaixo à esquerda
-  - `Termux:X11` à direita com altura ajustada ao conteúdo útil, sem sobra preta acima/abaixo no arranjo validado
-- com `--restart`, fecha esses três apps e recria o layout completo para teste de reabertura
+- abre o workspace base diretamente em `windowingMode=freeform`
+- aplica por padrão o layout contextual aprovado no tablet atual:
+  - em `android_ssh`:
+    - `Termux` no topo esquerdo
+    - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) embaixo à esquerda
+    - `Termux:X11` à direita
+  - em `local_workstation`:
+    - `Termux` ampliado na coluna esquerda
+    - `Termux:X11` à direita
+    - `Terminus` não é reaberto por padrão
+- com `--restart`, fecha os apps gerenciados e recria o layout completo para teste de reabertura
 - se a sessão gráfica estiver inativa, sobe `Openbox` com o perfil pedido sem voltar a layouts legados do Android
 
 `ADB/adb_open_desktop_app.sh`:
 
 - é o caminho canônico para abrir apps Android visíveis durante o trabalho host-side
 - sempre garante `desktop mode` antes da abertura
-- mantém `Termux`, `Termux:X11` e o cliente SSH visíveis como trio auxiliar
+- mantém o workspace base contextual visível:
+  - em `android_ssh`, `Termux` + `Termux:X11` + SSH
+  - em `local_workstation`, `Termux` + `Termux:X11`
 - aplica a política visual `Foco grande`:
   - app recém-aberto como janela principal
-  - trio base compactado em janelas auxiliares
+  - base contextual compactada em janelas auxiliares
   - a área útil real do desktop é medida a partir das insets da `StatusBar` e da `TaskbarWindow`, então o layout não usa mais `2560x1600` bruto
   - quando já existe 1 app extra visível, o helper usa um arranjo de 5 janelas compatível com o limite real do Samsung:
     - `X11` no topo esquerdo
@@ -278,7 +306,7 @@ Observação importante sobre transporte host-side:
 - executa também uma limpeza remota best-effort da sessão gráfica anterior dentro do contexto do app Termux, removendo Openbox/XFCE, terminais leves, `virgl`, `dbus` de sessão e caches controlados do projeto
 - mata e valida a remoção dos processos residuais do ecossistema Termux antes de reabrir os apps
 - mantém `Termux:API` fora do desktop visível; a app só entra automaticamente no reinstall limpo
-- reabre o desktop mode livre do workspace com `Termux`, `Termux:X11` e o cliente SSH nas janelas aprovadas
+- reabre o desktop mode livre do workspace no layout contextual aprovado para o contexto do operador
 - permite escolher o foco final com `--focus termux|x11`
 - deve ser o primeiro passo de qualquer fluxo novo e o passo obrigatório depois de qualquer falha de automação
 

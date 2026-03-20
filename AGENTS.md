@@ -59,6 +59,7 @@ Exceptions that override the generic reading order above:
    - do not fall back to a mixed “USB or Wireless debugging” message in that no-device case
 8. When opening any visible Android app from the host, prefer `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package PACKAGE` over raw `am start` or low-level `adb_desktop_mode.sh open`; the canonical policy is desktop mode mandatory plus the `Foco grande` layout.
    - in `android_ssh` operator context, keep the new app large and visible but preserve SSH as the default final focus unless the task explicitly demands focus on the launched app
+   - in `local_workstation` operator context, do not reopen `Terminus` by default; keep only `Termux` and `Termux:X11` as the core visible workspace and give `Termux` the larger left column
    - respect the real usable desktop area, not the raw physical display; on this Samsung build the taskbar consumes the lower inset and several freeform apps clamp to an effective minimum size around `646x646`
    - when one extra visible app already exists, use the validated 5-window arrangement instead of stacking three auxiliaries vertically
 9. For execution, testing, validation, provisioning, recovery, or command-map tasks, prefer `Local-Model-Execution-Guide.md`; do not substitute `Local-Model-System-Prompt.md` unless the user is explicitly tuning the local model behavior itself.

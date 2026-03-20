@@ -166,10 +166,16 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-sta
 bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'
 ```
 
+- Regressão única do workspace:
+
+```bash
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full
+```
+
 - Consolidate the approved Android freeform desktop layout:
 
 ```bash
-bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --focus ssh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh
 ```
 
 - Debian GUI app from host:
@@ -210,6 +216,23 @@ Natural requests such as `smoke test canonico` mean this exact 3-step order:
 1. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
 2. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
 3. `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report`
+
+### Regressão de manutenção
+Quando a intenção for rodar uma regressão única de manutenção com audit pai e layout visual, o entrypoint recomendado é:
+
+```bash
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full
+```
+
+Suites disponíveis:
+- `smoke`: equivalente ao smoke canônico de 3 etapas
+- `daily`: equivalente ao fluxo diário de 7 etapas
+- `desktop-layout`: só a regressão visual do desktop mode
+- `full`: fluxo diário + regressão visual do desktop mode
+
+Importante:
+- esse wrapper é de manutenção/regressão
+- ele não substitui o mapeamento natural já validado para `fluxo diario limpo completo`, que continua significando os 7 comandos explícitos
 
 ### Minimal repair
 Natural requests such as `com o stack atual` or `apenas o necessario` mean:

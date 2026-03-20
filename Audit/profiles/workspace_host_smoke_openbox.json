@@ -1,0 +1,26 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Reset canônico do stack",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux",
+      "timeout": 240,
+      "severity": "error"
+    },
+    {
+      "name": "Subir Openbox diário",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox",
+      "timeout": 180,
+      "severity": "error"
+    },
+    {
+      "name": "Validar baseline autoritativo",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report",
+      "timeout": 300,
+      "severity": "error"
+    }
+  ]
+}

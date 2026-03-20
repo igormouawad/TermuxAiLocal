@@ -13,7 +13,7 @@ X11_TOKEN='com.termux.x11/.MainActivity'
 SSH_PACKAGE='com.server.auditor.ssh.client'
 SSH_TOKEN='com.server.auditor.ssh.client/'
 OPENBOX_PROFILE='openbox-maxperf'
-FOCUS_TARGET='ssh'
+FOCUS_TARGET='auto'
 RESTART_APPS=0
 ENSURE_OPENBOX=1
 TOTAL_STEPS=5
@@ -24,11 +24,16 @@ DESK_ID=''
 BASE_DISPLAY_WIDTH=2560
 BASE_DISPLAY_HEIGHT=1600
 BASE_TERMUX_BOUNDS='32 96 1105 742'
+BASE_TERMUX_BOUNDS_WORKSTATION='32 96 1105 1488'
 BASE_SSH_BOUNDS='32 749 1105 1488'
 BASE_X11_BOUNDS='1129 96 2528 944'
 X11_UI_REMOTE='/sdcard/Download/adb_consolidate_freeform_desktop.xml'
 X11_UI_LOCAL="$(mktemp)"
 AUDIT_OWNER=0
+SSH_MODE='auto'
+SSH_ENABLED=1
+SSH_COMPONENT=''
+SSH_LAYOUT_RESULT='SSH omitido neste contexto.'
 
 cleanup() {
   local exit_code=$?
@@ -42,13 +47,15 @@ cleanup() {
 trap cleanup EXIT
 
 usage() {
-  printf 'Uso: %s [--restart] [--no-openbox] [--focus termux|x11|ssh] [--ssh-package PACKAGE] [--profile openbox-stable|openbox-maxperf|openbox-compat|openbox-vulkan-exp]\n' "$0"
+  printf 'Uso: %s [--restart] [--no-openbox] [--focus auto|termux|x11|ssh] [--ssh-package PACKAGE] [--with-ssh|--without-ssh] [--profile openbox-stable|openbox-maxperf|openbox-compat|openbox-vulkan-exp]\n' "$0"
   printf '  --restart     fecha Termux, Termux:X11 e o cliente SSH antes de reabrir tudo em freeform.\n'
   printf '  --no-openbox  apenas consolida as janelas; não sobe a sessão Openbox/X11.\n'
-  printf '  --focus       escolhe a janela final em foco: termux, x11 ou ssh.\n'
-  printf '  --ssh-package pacote Android do cliente SSH a ser posicionado na coluna esquerda inferior.\n'
+  printf '  --focus       escolhe a janela final em foco: auto, termux, x11 ou ssh.\n'
+  printf '  --ssh-package pacote Android do cliente SSH a ser posicionado na coluna esquerda inferior quando o SSH estiver habilitado.\n'
+  printf '  --with-ssh    força o cliente SSH no layout mesmo fora do contexto android_ssh.\n'
+  printf '  --without-ssh omite o cliente SSH do layout e amplia o Termux.\n'
   printf '  --profile     perfil Openbox a garantir quando a sessão X11 estiver inativa.\n'
-  printf 'Layout aprovado no tablet atual: Termux no topo esquerdo, SSH embaixo à esquerda e Termux:X11 à direita sem sobras pretas acima/abaixo.\n'
+  printf 'Layout contextual: no tablet via SSH, mantém o trio; no workstation local, omite o Terminus e amplia o Termux.\n'
 }
 
 fail() {
@@ -92,6 +99,14 @@ while [ "$#" -gt 0 ]; do
       SSH_PACKAGE="${1#*=}"
       shift
       ;;
+    --with-ssh)
+      SSH_MODE='on'
+      shift
+      ;;
+    --without-ssh)
+      SSH_MODE='off'
+      shift
+      ;;
     --profile)
       shift
       OPENBOX_PROFILE="${1:-$OPENBOX_PROFILE}"
@@ -113,14 +128,14 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$FOCUS_TARGET" in
-  termux|x11|ssh)
+  auto|termux|x11|ssh)
     ;;
   *)
     fail \
       'validação de argumentos' \
       "Foco final inválido: $FOCUS_TARGET" \
       'O helper não sabe qual janela deve receber foco ao final da consolidação.' \
-      'Usar --focus termux, --focus x11 ou --focus ssh.'
+      'Usar --focus auto, --focus termux, --focus x11 ou --focus ssh.'
       ;;
 esac
 
@@ -144,6 +159,49 @@ termux::require_host_command \
 DEVICE_ID="$(termux::resolve_target_device)"
 termux::audit_session_begin 'Consolidação do desktop freeform Samsung' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+
+resolve_ssh_enabled() {
+  case "$SSH_MODE" in
+    on)
+      printf '1\n'
+      ;;
+    off)
+      printf '0\n'
+      ;;
+    *)
+      if [ "$(termux::operator_context)" = 'android_ssh' ]; then
+        printf '1\n'
+      else
+        printf '0\n'
+      fi
+      ;;
+  esac
+}
+
+resolve_focus_target() {
+  if [ "$FOCUS_TARGET" != 'auto' ]; then
+    printf '%s\n' "$FOCUS_TARGET"
+    return 0
+  fi
+
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    printf '%s\n' 'ssh'
+    return 0
+  fi
+
+  printf '%s\n' 'termux'
+}
+
+SSH_ENABLED="$(resolve_ssh_enabled)"
+FOCUS_TARGET="$(resolve_focus_target)"
+
+if [ "$SSH_ENABLED" -eq 0 ] && [ "$FOCUS_TARGET" = 'ssh' ]; then
+  fail \
+    'validação de argumentos' \
+    'Foco final em ssh solicitado, mas o layout atual está configurado sem cliente SSH.' \
+    'A consolidação não vai reabrir o Terminus no contexto local do workstation.' \
+    'Usar --with-ssh ou escolher --focus termux/x11.'
+fi
 
 run_adb() {
   termux::adb_run \
@@ -346,8 +404,13 @@ compute_layout() {
   display_width=$((display_right - display_left))
   display_height=$((display_bottom - display_top))
 
-  TERMUX_BOUNDS="$(scale_bounds "$BASE_TERMUX_BOUNDS" "$display_left" "$display_top" "$display_width" "$display_height")"
-  SSH_BOUNDS="$(scale_bounds "$BASE_SSH_BOUNDS" "$display_left" "$display_top" "$display_width" "$display_height")"
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    TERMUX_BOUNDS="$(scale_bounds "$BASE_TERMUX_BOUNDS" "$display_left" "$display_top" "$display_width" "$display_height")"
+    SSH_BOUNDS="$(scale_bounds "$BASE_SSH_BOUNDS" "$display_left" "$display_top" "$display_width" "$display_height")"
+  else
+    TERMUX_BOUNDS="$(scale_bounds "$BASE_TERMUX_BOUNDS_WORKSTATION" "$display_left" "$display_top" "$display_width" "$display_height")"
+    SSH_BOUNDS=''
+  fi
   X11_BOUNDS="$(scale_bounds "$BASE_X11_BOUNDS" "$display_left" "$display_top" "$display_width" "$display_height")"
   DISPLAY_BOUNDS="${display_left} ${display_top} ${display_right} ${display_bottom}"
 }
@@ -535,7 +598,11 @@ resize_task() {
 refresh_layout_tasks() {
   TERMUX_TASK_ID="$(task_id_by_package 'com.termux')"
   X11_TASK_ID="$(task_id_by_package 'com.termux.x11')"
-  SSH_TASK_ID="$(task_id_by_package "$SSH_PACKAGE")"
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    SSH_TASK_ID="$(task_id_by_package "$SSH_PACKAGE")"
+  else
+    SSH_TASK_ID=''
+  fi
 
   [ -n "$TERMUX_TASK_ID" ] || fail \
     'resolução da task do Termux' \
@@ -549,22 +616,28 @@ refresh_layout_tasks() {
     'A task do app Termux:X11 não foi encontrada para reaplicar o layout desktop.' \
     'Reabrir o app Termux:X11 no tablet e repetir a consolidação.'
 
-  [ -n "$SSH_TASK_ID" ] || fail \
-    "resolução da task do cliente SSH $SSH_PACKAGE" \
-    'task ausente' \
-    'A task do cliente SSH não foi encontrada para reaplicar o layout desktop.' \
-    'Reabrir o cliente SSH no tablet e repetir a consolidação.'
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    [ -n "$SSH_TASK_ID" ] || fail \
+      "resolução da task do cliente SSH $SSH_PACKAGE" \
+      'task ausente' \
+      'A task do cliente SSH não foi encontrada para reaplicar o layout desktop.' \
+      'Reabrir o cliente SSH no tablet e repetir a consolidação.'
+  fi
 }
 
 apply_layout_to_current_tasks() {
   move_task_to_desktop_desk "$TERMUX_TASK_ID" 'Termux'
   move_task_to_desktop_desk "$X11_TASK_ID" 'Termux:X11'
-  move_task_to_desktop_desk "$SSH_TASK_ID" 'SSH client'
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    move_task_to_desktop_desk "$SSH_TASK_ID" 'SSH client'
+  fi
 
   compute_layout
 
   TERMUX_LAYOUT_RESULT="$(resize_task "$TERMUX_TASK_ID" "$TERMUX_BOUNDS" 'Termux')"
-  SSH_LAYOUT_RESULT="$(resize_task "$SSH_TASK_ID" "$SSH_BOUNDS" 'SSH')"
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    SSH_LAYOUT_RESULT="$(resize_task "$SSH_TASK_ID" "$SSH_BOUNDS" 'SSH')"
+  fi
   X11_LAYOUT_RESULT="$(resize_task "$X11_TASK_ID" "$X11_BOUNDS" 'Termux:X11')"
 }
 
@@ -645,6 +718,11 @@ focus_task() {
       focus_token='com.termux.x11/'
       ;;
     ssh)
+      [ "$SSH_ENABLED" -eq 1 ] || fail \
+        'foco final em ssh' \
+        'cliente SSH desabilitado neste contexto' \
+        'O layout atual não inclui o Terminus porque o operador está no workstation local.' \
+        'Escolher foco em termux ou x11.'
       focus_token="$SSH_PACKAGE/"
       ;;
   esac
@@ -661,7 +739,9 @@ focus_task() {
   fi
 }
 
-SSH_COMPONENT="$(resolve_component "$SSH_PACKAGE")"
+if [ "$SSH_ENABLED" -eq 1 ]; then
+  SSH_COMPONENT="$(resolve_component "$SSH_PACKAGE")"
+fi
 DESK_ID="$(resolve_desktop_desk_id)"
 
 step_begin 'Preparando o desktop mode livre e limpando UI residual do Termux:API'
@@ -672,11 +752,22 @@ if [ "$RESTART_APPS" -eq 1 ]; then
 fi
 step_ok 'Contexto Android pronto para reabrir o trio principal.'
 
-step_begin 'Abrindo Termux, Termux:X11 e o cliente SSH em janelas livres'
+step_begin "$(
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    printf '%s' 'Abrindo Termux, Termux:X11 e o cliente SSH em janelas livres'
+  else
+    printf '%s' 'Abrindo Termux e Termux:X11 em janelas livres'
+  fi
+)"
 TERMUX_TASK_ID="$(start_freeform_activity "$TERMUX_COMPONENT" "$TERMUX_TOKEN" 'Termux')"
 X11_TASK_ID="$(start_freeform_activity "$X11_COMPONENT" "$X11_TOKEN" 'Termux:X11')"
-SSH_TASK_ID="$(start_freeform_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
-step_ok 'As três janelas principais foram detectadas no desktop.'
+if [ "$SSH_ENABLED" -eq 1 ]; then
+  SSH_TASK_ID="$(start_freeform_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
+  step_ok 'As três janelas principais foram detectadas no desktop.'
+else
+  SSH_TASK_ID=''
+  step_ok 'As janelas principais do workstation foram detectadas no desktop.'
+fi
 
 step_begin 'Aplicando bounds aprovados e consolidando o layout visível'
 apply_layout_to_current_tasks
@@ -708,9 +799,15 @@ step_ok "Foco final entregue para ${FOCUS_TARGET}."
 printf 'Desktop freeform consolidado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Display: [%s]\n' "$DISPLAY_BOUNDS"
 printf '%s\n' "$TERMUX_LAYOUT_RESULT"
-printf '%s\n' "$SSH_LAYOUT_RESULT"
+if [ "$SSH_ENABLED" -eq 1 ]; then
+  printf '%s\n' "$SSH_LAYOUT_RESULT"
+else
+  printf 'Cliente SSH: omitido no contexto local do workstation.\n'
+fi
 printf '%s\n' "$X11_LAYOUT_RESULT"
-printf 'Cliente SSH: %s\n' "$SSH_COMPONENT"
+if [ "$SSH_ENABLED" -eq 1 ]; then
+  printf 'Cliente SSH: %s\n' "$SSH_COMPONENT"
+fi
 printf 'Openbox: %s\n' "$OPENBOX_PROFILE"
 printf 'Foco final: %s\n' "$FOCUS_TARGET"
 printf 'Stack: %s\n' "$STATUS_LINE"

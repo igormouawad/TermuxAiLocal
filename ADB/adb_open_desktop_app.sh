@@ -17,9 +17,12 @@ COMPONENT_NAME=''
 SSH_PACKAGE='com.server.auditor.ssh.client'
 WITH_OPENBOX=0
 FOCUS_TARGET='auto'
+REFLOW_ONLY=0
 TOTAL_STEPS=5
 CURRENT_STEP=0
 AUDIT_OWNER=0
+SSH_MODE='auto'
+SSH_ENABLED=1
 
 BASE_LAYOUT_WIDTH=2496
 BASE_LAYOUT_HEIGHT=1392
@@ -36,6 +39,11 @@ BASE_EXTRA_TERMUX_BOUNDS='0 746 828 1392'
 BASE_EXTRA_PRIMARY_BOUNDS='860 0 2496 710'
 BASE_EXTRA_SSH_BOUNDS='860 746 1670 1392'
 BASE_EXTRA_SECONDARY_BOUNDS='1686 746 2496 1392'
+BASE_WORKSTATION_NOEXTRA_X11_BOUNDS='952 746 2496 1392'
+BASE_WORKSTATION_EXTRA_TERMUX_BOUNDS='0 0 920 1392'
+BASE_WORKSTATION_EXTRA_PRIMARY_BOUNDS='952 0 2496 710'
+BASE_WORKSTATION_EXTRA_X11_BOUNDS='952 746 1760 1392'
+BASE_WORKSTATION_EXTRA_SECONDARY_BOUNDS='1776 746 2496 1392'
 
 TARGET_PACKAGE=''
 TARGET_COMPONENT=''
@@ -76,8 +84,11 @@ Opcoes:
   --component PKG/ACT      usa uma activity explicita
   --display ID             display Android alvo (padrao: 0)
   --ssh-package PACKAGE    pacote do cliente SSH no trio auxiliar
+  --with-ssh              força o cliente SSH como janela auxiliar
+  --without-ssh           omite o cliente SSH e amplia o Termux
   --with-openbox           garante a sessao Openbox antes da abertura do app
   --focus auto|app|termux|x11|ssh
+  --reflow-only            reaplica o layout atual sem abrir um novo app
 
 Politica visual:
   - desktop mode Samsung sempre ativo
@@ -172,8 +183,20 @@ while [ "$#" -gt 0 ]; do
       SSH_PACKAGE="${1#*=}"
       shift
       ;;
+    --with-ssh)
+      SSH_MODE='on'
+      shift
+      ;;
+    --without-ssh)
+      SSH_MODE='off'
+      shift
+      ;;
     --with-openbox)
       WITH_OPENBOX=1
+      shift
+      ;;
+    --reflow-only)
+      REFLOW_ONLY=1
       shift
       ;;
     --focus)
@@ -200,11 +223,13 @@ if [ -n "$COMPONENT_NAME" ] && [ -z "$PACKAGE_NAME" ]; then
   PACKAGE_NAME="${COMPONENT_NAME%%/*}"
 fi
 
-[ -n "$PACKAGE_NAME" ] || fail \
-  'validacao de argumentos' \
-  'Nenhum --package nem --component informado.' \
-  'O helper nao sabe qual app Android deve abrir em modo desktop.' \
-  'Usar --package PACKAGE ou --component PKG/ACT.'
+if [ "$REFLOW_ONLY" -ne 1 ]; then
+  [ -n "$PACKAGE_NAME" ] || fail \
+    'validacao de argumentos' \
+    'Nenhum --package nem --component informado.' \
+    'O helper nao sabe qual app Android deve abrir em modo desktop.' \
+    'Usar --package PACKAGE ou --component PKG/ACT.'
+fi
 
 case "$FOCUS_TARGET" in
   auto|app|termux|x11|ssh)
@@ -222,6 +247,26 @@ DEVICE_ID="$(termux::resolve_target_device "$DEVICE_ID")"
 termux::audit_session_begin 'Abertura de app Android em desktop mode' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
+resolve_ssh_enabled() {
+  case "$SSH_MODE" in
+    on)
+      printf '1\n'
+      ;;
+    off)
+      printf '0\n'
+      ;;
+    *)
+      if [ "$(termux::operator_context)" = 'android_ssh' ]; then
+        printf '1\n'
+      else
+        printf '0\n'
+      fi
+      ;;
+  esac
+}
+
+SSH_ENABLED="$(resolve_ssh_enabled)"
+
 resolve_focus_target() {
   if [ "$FOCUS_TARGET" != 'auto' ]; then
     printf '%s\n' "$FOCUS_TARGET"
@@ -238,14 +283,32 @@ resolve_focus_target() {
 
 FOCUS_TARGET="$(resolve_focus_target)"
 
-TARGET_COMPONENT="${COMPONENT_NAME:-$(desktop::resolve_component "$DEVICE_ID" "$PACKAGE_NAME" || true)}"
-[ -n "$TARGET_COMPONENT" ] || fail \
-  "cmd package resolve-activity --brief $PACKAGE_NAME" \
-  'A activity principal do pacote nao foi resolvida.' \
-  'O helper nao consegue abrir o app alvo no desktop sem um componente valido.' \
-  'Confirmar que o pacote esta instalado e repetir.'
+if [ "$SSH_ENABLED" -eq 0 ] && [ "$FOCUS_TARGET" = 'ssh' ]; then
+  fail \
+    'validacao de argumentos' \
+    'Foco final em ssh solicitado, mas o layout atual está configurado sem cliente SSH.' \
+    'No workstation local o Terminus não deve ser reaberto por padrão.' \
+    'Usar --with-ssh ou escolher foco em app, termux ou x11.'
+fi
+
+if [ -n "$PACKAGE_NAME" ] || [ -n "$COMPONENT_NAME" ]; then
+  TARGET_COMPONENT="${COMPONENT_NAME:-$(desktop::resolve_component "$DEVICE_ID" "$PACKAGE_NAME" || true)}"
+  [ -n "$TARGET_COMPONENT" ] || fail \
+    "cmd package resolve-activity --brief $PACKAGE_NAME" \
+    'A activity principal do pacote nao foi resolvida.' \
+    'O helper nao consegue abrir o app alvo no desktop sem um componente valido.' \
+    'Confirmar que o pacote esta instalado e repetir.'
 
 TARGET_PACKAGE="${TARGET_COMPONENT%%/*}"
+
+if [ "$SSH_ENABLED" -eq 0 ] && [ "$TARGET_PACKAGE" = "$SSH_PACKAGE" ]; then
+  fail \
+    'validacao da política de desktop do workstation' \
+    'O pacote alvo é o cliente SSH, mas o contexto atual está configurado sem Terminus.' \
+    'A diretiva consolidada para workstation local omite o Terminus do layout.' \
+    'Usar --with-ssh se a reabertura do cliente SSH for realmente necessária.'
+fi
+fi
 
 core_focus_target() {
   case "$TARGET_PACKAGE" in
@@ -265,11 +328,30 @@ core_focus_target() {
 }
 
 ensure_core_workspace() {
-  local helper_args=(--focus ssh)
+  local helper_args=()
 
   if [ "$WITH_OPENBOX" -eq 0 ]; then
-    helper_args=(--no-openbox "${helper_args[@]}")
+    helper_args+=(--no-openbox)
   fi
+
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    helper_args+=(--with-ssh)
+  else
+    helper_args+=(--without-ssh)
+  fi
+
+  case "$FOCUS_TARGET" in
+    ssh|termux|x11)
+      helper_args+=(--focus "$FOCUS_TARGET")
+      ;;
+    *)
+      if [ "$SSH_ENABLED" -eq 1 ]; then
+        helper_args+=(--focus ssh)
+      else
+        helper_args+=(--focus termux)
+      fi
+      ;;
+  esac
 
   run_workspace_helper "ADB/adb_consolidate_freeform_desktop.sh" "${helper_args[@]}" >/dev/null
 }
@@ -277,7 +359,11 @@ ensure_core_workspace() {
 refresh_core_tasks() {
   TERMUX_TASK_ID="$(desktop::task_id_by_package "$DEVICE_ID" 'com.termux' || true)"
   X11_TASK_ID="$(desktop::task_id_by_package "$DEVICE_ID" 'com.termux.x11' || true)"
-  SSH_TASK_ID="$(desktop::task_id_by_package "$DEVICE_ID" "$SSH_PACKAGE" || true)"
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    SSH_TASK_ID="$(desktop::task_id_by_package "$DEVICE_ID" "$SSH_PACKAGE" || true)"
+  else
+    SSH_TASK_ID=''
+  fi
 
   [ -n "$TERMUX_TASK_ID" ] || fail \
     'resolucao da task do Termux' \
@@ -291,11 +377,13 @@ refresh_core_tasks() {
     'O app Termux:X11 nao ficou visivel no desktop antes de abrir o app alvo.' \
     'Repetir a consolidacao do trio e tentar novamente.'
 
-  [ -n "$SSH_TASK_ID" ] || fail \
-    "resolucao da task do cliente SSH $SSH_PACKAGE" \
-    'task ausente' \
-    'O cliente SSH nao ficou visivel no desktop antes de abrir o app alvo.' \
-    'Repetir a consolidacao do trio e tentar novamente.'
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    [ -n "$SSH_TASK_ID" ] || fail \
+      "resolucao da task do cliente SSH $SSH_PACKAGE" \
+      'task ausente' \
+      'O cliente SSH nao ficou visivel no desktop antes de abrir o app alvo.' \
+      'Repetir a consolidacao do trio e tentar novamente.'
+  fi
 }
 
 collect_secondary_tasks() {
@@ -348,18 +436,32 @@ compute_scaled_layout() {
   DISPLAY_BOUNDS="${display_left} ${display_top} ${display_right} ${display_bottom}"
   USABLE_BOUNDS="${usable_left} ${usable_top} ${usable_right} ${usable_bottom}"
 
-  if [ "${#SECONDARY_TASK_IDS[@]}" -eq 0 ]; then
-    X11_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    SSH_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_SSH_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    SECONDARY_AREA_BOUNDS=''
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    if [ "${#SECONDARY_TASK_IDS[@]}" -eq 0 ]; then
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SSH_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_SSH_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_NOEXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SECONDARY_AREA_BOUNDS=''
+    else
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SSH_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_SSH_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SECONDARY_AREA_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_SECONDARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    fi
   else
-    X11_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    SSH_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_SSH_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    SECONDARY_AREA_BOUNDS="$(desktop::scale_bounds "$BASE_EXTRA_SECONDARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    SSH_BOUNDS=''
+    TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+
+    if [ "${#SECONDARY_TASK_IDS[@]}" -eq 0 ]; then
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_NOEXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SECONDARY_AREA_BOUNDS=''
+    else
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SECONDARY_AREA_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_SECONDARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    fi
   fi
 }
 
@@ -532,6 +634,43 @@ open_target_app() {
     'Repetir a operacao ou abrir o app manualmente uma vez.'
 }
 
+resolve_existing_target_app() {
+  local task_id
+  local package_name
+
+  if [ -n "$TARGET_PACKAGE" ]; then
+    TARGET_TASK_ID="$(desktop::task_id_by_package "$DEVICE_ID" "$TARGET_PACKAGE" || true)"
+    [ -n "$TARGET_TASK_ID" ] || fail \
+      "resolucao da task atual para ${TARGET_PACKAGE}" \
+      'task ausente' \
+      'O modo --reflow-only foi pedido, mas o app alvo nao esta visivel no desktop.' \
+      'Abrir o app primeiro com --package PACKAGE ou repetir o reflow quando ele estiver visivel.'
+    return 0
+  fi
+
+  while IFS=$'\t' read -r task_id package_name _; do
+    [ -n "$task_id" ] || continue
+    [ -n "$package_name" ] || continue
+
+    case "$package_name" in
+      com.termux|com.termux.x11|"$SSH_PACKAGE"|com.termux.api|com.sec.android.app.launcher|com.android.launcher3|com.android.systemui)
+        continue
+        ;;
+    esac
+
+    TARGET_TASK_ID="$task_id"
+    TARGET_PACKAGE="$package_name"
+    TARGET_COMPONENT="$(desktop::resolve_component "$DEVICE_ID" "$TARGET_PACKAGE" || true)"
+    return 0
+  done < <(desktop::visible_task_table "$DEVICE_ID" | sort -rn)
+
+  fail \
+    'resolucao do app extra visivel para reflow' \
+    'nenhuma task extra visivel encontrada' \
+    'O helper nao encontrou um app extra visivel para reaplicar o layout Foco grande.' \
+    'Abrir um app Android com --package PACKAGE antes de usar --reflow-only.'
+}
+
 apply_focus_large_layout() {
   local secondary_count="${#SECONDARY_TASK_IDS[@]}"
   local index=0
@@ -540,7 +679,9 @@ apply_focus_large_layout() {
   ensure_task_on_desktop "$TARGET_TASK_ID" "$TARGET_PACKAGE"
   ensure_task_on_desktop "$X11_TASK_ID" 'Termux:X11'
   ensure_task_on_desktop "$TERMUX_TASK_ID" 'Termux'
-  ensure_task_on_desktop "$SSH_TASK_ID" 'SSH'
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    ensure_task_on_desktop "$SSH_TASK_ID" 'SSH'
+  fi
 
   for index in "${!SECONDARY_TASK_IDS[@]}"; do
     ensure_task_on_desktop "${SECONDARY_TASK_IDS[$index]}" "${SECONDARY_PACKAGES[$index]}"
@@ -551,7 +692,9 @@ apply_focus_large_layout() {
   resize_task "$TARGET_TASK_ID" "$PRIMARY_BOUNDS" "$TARGET_PACKAGE"
   resize_task "$X11_TASK_ID" "$X11_BOUNDS" 'Termux:X11'
   resize_task "$TERMUX_TASK_ID" "$TERMUX_BOUNDS" 'Termux'
-  resize_task "$SSH_TASK_ID" "$SSH_BOUNDS" 'SSH'
+  if [ "$SSH_ENABLED" -eq 1 ]; then
+    resize_task "$SSH_TASK_ID" "$SSH_BOUNDS" 'SSH'
+  fi
 
   if [ "$secondary_count" -gt 0 ]; then
     for index in "${!SECONDARY_TASK_IDS[@]}"; do
@@ -576,15 +719,26 @@ step_begin 'Garantindo o desktop mode e o trio base antes de abrir o app alvo'
 ensure_core_workspace
 step_ok 'Desktop mode ativo e trio base visível.'
 
-step_begin "Abrindo ${TARGET_PACKAGE} como janela principal em FREEFORM"
+step_begin "$(
+  if [ "$REFLOW_ONLY" -eq 1 ]; then
+    printf '%s' 'Resolvendo o app visível que deve permanecer como janela principal'
+  else
+    printf 'Abrindo %s como janela principal em FREEFORM' "$TARGET_PACKAGE"
+  fi
+)"
 DESK_ID="$(desktop::active_desk_id "$DEVICE_ID" || true)"
 [ -n "$DESK_ID" ] || fail \
   'wm shell desktopmode dump' \
   "$(desktop::dump "$DEVICE_ID")" \
   'O Android não expôs um desk ativo para o modo desktop.' \
   'Confirmar que o tablet está em desktop mode e repetir a operação.'
-open_target_app
-step_ok "A task principal de ${TARGET_PACKAGE} foi detectada."
+if [ "$REFLOW_ONLY" -eq 1 ]; then
+  resolve_existing_target_app
+  step_ok "A task atual de ${TARGET_PACKAGE} foi detectada para o reflow."
+else
+  open_target_app
+  step_ok "A task principal de ${TARGET_PACKAGE} foi detectada."
+fi
 
 step_begin 'Coletando o trio base e possíveis apps auxiliares já visíveis'
 refresh_core_tasks
@@ -618,6 +772,10 @@ printf 'Task alvo: %s\n' "$TARGET_TASK_ID"
 printf 'Area util: [%s]\n' "$USABLE_BOUNDS"
 printf 'Area interna: [%s]\n' "$DISPLAY_BOUNDS"
 printf 'Bounds principais: [%s]\n' "$PRIMARY_BOUNDS"
-printf 'Bounds auxiliares: X11=[%s] TERMUX=[%s] SSH=[%s]\n' "$X11_BOUNDS" "$TERMUX_BOUNDS" "$SSH_BOUNDS"
+if [ "$SSH_ENABLED" -eq 1 ]; then
+  printf 'Bounds auxiliares: X11=[%s] TERMUX=[%s] SSH=[%s]\n' "$X11_BOUNDS" "$TERMUX_BOUNDS" "$SSH_BOUNDS"
+else
+  printf 'Bounds auxiliares: X11=[%s] TERMUX=[%s] SSH=[omitido]\n' "$X11_BOUNDS" "$TERMUX_BOUNDS"
+fi
 printf 'Apps auxiliares extras: %s\n' "${#SECONDARY_TASK_IDS[@]}"
 printf 'Foco final: %s\n' "$FOCUS_TARGET"

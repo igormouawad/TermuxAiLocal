@@ -1,0 +1,50 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Reset canônico",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux",
+      "timeout": 240,
+      "severity": "error"
+    },
+    {
+      "name": "Subir Openbox diário",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox",
+      "timeout": 180,
+      "severity": "error"
+    },
+    {
+      "name": "Validar baseline",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_validate_baseline.sh --desktop=openbox --profile=openbox-maxperf --with-gpu --report",
+      "timeout": 300,
+      "severity": "error"
+    },
+    {
+      "name": "Probe do status resumido",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'",
+      "timeout": 90,
+      "severity": "info"
+    },
+    {
+      "name": "Reabrir Openbox para os testes visuais",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox",
+      "timeout": 180,
+      "severity": "error"
+    },
+    {
+      "name": "Teste X11 leve",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'",
+      "timeout": 120,
+      "severity": "error"
+    },
+    {
+      "name": "Teste Debian GUI com xeyes",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'",
+      "timeout": 180,
+      "severity": "error"
+    }
+  ]
+}

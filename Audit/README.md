@@ -81,7 +81,24 @@ Perfis úteis neste diretório:
 - `demo_failure.json`: falha controlada com `continue_on_error=true`.
 - `demo_timeout.json`: timeout controlado.
 - `termux_openbox_smoke.json`: smoke básico do stack no próprio Termux.
+- `workspace_host_smoke_openbox.json`: smoke host-side em 3 etapas canônicas.
+- `workspace_host_daily_flow.json`: fluxo diário host-side completo em 7 etapas.
+- `workspace_desktop_layout_regression.json`: regressão visual do desktop mode via wrapper canônico.
+- `workspace_full_regression.json`: regressão completa do workspace via wrapper canônico.
 - `demo_enterprise_bundle.json`: cópia de referência do bundle original.
+
+Wrapper canônico de regressão host-side:
+
+```bash
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full
+```
+
+Suites disponíveis:
+
+- `smoke`: `reset -> start -> validate`
+- `daily`: fluxo diário validado de 7 passos
+- `desktop-layout`: trio base + app principal + secundário opcional + reflow explícito
+- `full`: fluxo diário + regressão visual do desktop mode
 
 ## Dependências
 
@@ -134,6 +151,15 @@ Para alterar o protocolo do espelho host -> Termux:
    - smoke `exec`
    - `summarize`
    - um wrapper host-side real
+
+Para manter a regressão do workspace:
+
+1. prefira editar `ADB/adb_run_workspace_regression.sh` em vez de duplicar flows em vários lugares
+2. preserve as suites `smoke`, `daily`, `desktop-layout` e `full`
+3. se mudar o layout visual, revalide também:
+   - `ADB/adb_open_desktop_app.sh --reflow-only`
+   - `ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+4. mantenha os perfis JSON de referência alinhados com o wrapper e com `Local-Model-Execution-Guide.md`
 
 ## Limites conhecidos
 

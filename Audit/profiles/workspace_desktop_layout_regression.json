@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "shell": true,
+    "line_buffered": true
+  },
+  "steps": [
+    {
+      "name": "Regressão de layout em desktop mode",
+      "command": "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite desktop-layout",
+      "timeout": 240,
+      "severity": "error"
+    }
+  ]
+}
