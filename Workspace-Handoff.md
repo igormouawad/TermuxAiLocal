@@ -303,6 +303,11 @@ Do not treat this file as a historical changelog.
       - primary app `[892,96][2528,806]`
       - SSH `[892,842][1702,1488]`
       - extra app `[1718,842][2528,1488]`
+    - later workstation-side retesting after a cold reboot also revalidated the distinction between the two modes:
+      - outside desktop mode, `Termux`, `Terminus` and `Termux:X11` can all be opened in freeform with `start-activity --windowingMode 5`
+      - however, the layout becomes unstable as soon as `cmd activity task resize` is applied to `Termux` or `Terminus`: on this Samsung build those tasks jump to fullscreen (`[0,0][2560,1600]`) even though they were initially valid freeform windows
+      - `Termux:X11` is visually more disruptive outside desktop mode because it opens large and dark, but it was not the primary trigger of the collapse in that retest
+      - decision preserved: ignore popup/freeform outside desktop mode for automation purposes and keep Samsung desktop mode as the only canonical managed path
     - after that validation, the requested save point for the next continuation is: workstation Linux host, preferred transport `USB`
   - latest direct USB revalidation on `<ADB_USB_SERIAL>` confirmed:
     - `status -> off -> on -> status` passed
