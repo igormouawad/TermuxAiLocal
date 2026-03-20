@@ -8,6 +8,8 @@ Thumbs.db
 *.tmp
 *.bak
 *.orig
+__pycache__/
+*.pyc
 
 # Local editor/project state
 .idea/
