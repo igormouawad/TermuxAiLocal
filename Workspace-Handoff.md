@@ -32,11 +32,30 @@ Do not treat this file as a historical changelog.
   - evidence:
     - local Linux workstation context
     - `adb devices -l` returned the Samsung tablet `<ADB_USB_SERIAL>` in `state=device` over USB
+  - `SCENARIO_2_ANDROID_WIFI`
+  - evidence:
+    - operator connected by SSH from the tablet through `Terminus`
+    - `detect-scenario` returned `adb_transport=wifi`, `session_risk=high` and `confidence=high`
+    - `preflight` returned `can_run_mutations=false`, `must_protect_host_session=true` and the validated trio visible in desktop mode
 - Public shell wrappers now call the structured `prechange-audit` automatically when they are the parent audit session.
 - Nested wrappers no longer duplicate the same audit gate under `workspace_host_menu.sh`.
 - Session safety is now executable policy:
   - in `SCENARIO_2_ANDROID_WIFI`, destructive actions such as stack reset, desktop restart, baseline validation, reinstall/provision and Wi‑Fi control by USB are blocked before mutation
   - in `UNKNOWN_OR_UNSAFE`, only pure inspection remains allowed
+- Current validated safe mutation path in `SCENARIO_2_ANDROID_WIFI`:
+  - `adb_open_desktop_app.sh --package com.termux`
+  - `adb_open_desktop_app.sh --package com.termux.x11`
+  - `adb_open_desktop_app.sh --package com.android.settings`
+  - all three now pass the `desktop_app_launch` gate as `CAUTION`, keep the session hosted in `Terminus` alive and return the default final focus to `com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity`
+  - latest validated base trio bounds for `android_ssh`:
+    - `Termux`: `[32,96][1105,1488]`
+    - `Termux:X11`: `[1129,96][2528,806]`
+    - `Terminus`: `[1129,842][2528,1488]`
+  - this base layout keeps `Termux` on the full left column and removes the visible overlap between `Termux:X11` and `Terminus` on the right column
+- Current validated SSH-host protection fix:
+  - `ADB/adb_open_desktop_app.sh` no longer overrides the default `android_ssh` focus policy when the target app is part of the core trio
+  - `ADB/adb_consolidate_desktop_mode.sh` now reuses the existing SSH task in `android_ssh` whenever it already exists
+  - if the SSH task must be reopened in that scenario, the consolidator now targets the explicit `com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity` instead of the generic launcher activity
 - New docs:
   - `docs/Enterprise-Architecture.md`
   - `docs/Scenario-Decision-Matrix.md`
@@ -72,7 +91,7 @@ Do not treat this file as a historical changelog.
     - without a package, it picks the most recent visible non-core app already on screen
     - if no extra visible app exists, it fails explicitly instead of inventing a target
   - current context-aware desktop policy:
-    - in `android_ssh`, preserve the classic trio with `Termux` top-left, `Terminus` bottom-left and `Termux:X11` on the right
+    - in `android_ssh`, keep `Termux` using the full left column, keep `Termux:X11` in the upper-right slot and keep `Terminus` below it in the lower-right slot
     - in `local_workstation`, do not reopen `Terminus` by default; keep `Termux` enlarged on the left and `Termux:X11` on the right
 - Workspace migration state is now consolidated for active tooling:
   - the workspace itself no longer contains references to the pre-`AI/` project root
@@ -279,7 +298,7 @@ Do not treat this file as a historical changelog.
 - Accepted 3D path: `VirGL plain` with `GALLIUM_DRIVER=virpipe`
 - Display baseline: `Termux:X11` on `DISPLAY=:1`
 - Preferred manual Android desktop layout is now contextual:
-  - in `android_ssh`: desktop trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+  - in `android_ssh`: desktop trio with `Termux` filling the left column, `Termux:X11` upper-right, and `Terminus` lower-right
   - in `local_workstation`: `Termux` enlarged on the left and `Termux:X11` on the right, without reopening `Terminus`
 - Shared-device coordination rule:
   - while the operator is using the Android tablet for unrelated work, do not touch the device via ADB
@@ -327,7 +346,7 @@ Do not treat this file as a historical changelog.
   - resulting clean session for that post-reboot watcher validation:
     - `Audit/runs/mirror-20260321-125650-247729`
 - Current validated Android desktop-state continuity:
-  - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
+  - the live Android desktop arrangement remains the approved trio: `Termux` filling the left column, `Termux:X11` upper-right and `Terminus` lower-right
   - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows
   - the last validated manual SSH target inside `Terminus` was `DESKTOP_LINUX`
   - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_desktop_mode.sh --restart --focus ssh` on the USB target `<ADB_USB_SERIAL>`

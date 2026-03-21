@@ -103,7 +103,10 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_configure_phantom_processes.sh`: leitura/aplicação do override recomendado para limitar menos o Android contra `phantom processes`.
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
 - `ADB/adb_start_desktop.sh`: subida host-side do desktop suportado.
-- `ADB/adb_consolidate_desktop_mode.sh`: consolida o desktop mode aprovado de forma contextual: no workstation local, `Termux` ampliado + `Termux:X11`; em `android_ssh`, mantém o trio com cliente SSH.
+- `ADB/adb_consolidate_desktop_mode.sh`: consolida o desktop mode aprovado de forma contextual: no workstation local, `Termux` ampliado + `Termux:X11`; em `android_ssh`, mantém o trio com `Termux` ocupando toda a coluna esquerda, `Termux:X11` no alto à direita e o cliente SSH abaixo dele.
+- no contexto `android_ssh`, o consolidator agora trata o cliente SSH como sessão hospedeira sensível:
+  - se a task do SSH já existir, ela é reutilizada e apenas recolocada no desk/layout aprovados
+  - se precisar abrir a janela do SSH do zero, o helper usa a `TerminalActivity` explícita do cliente validado em vez da activity principal genérica
 - `ADB/adb_open_desktop_app.sh`: entrypoint canônico para abrir um app Android visível em desktop mode, preservando o workspace base contextual e aplicando o layout `Foco grande`.
 - `ADB/adb_open_desktop_app.sh --reflow-only`: reaplica o layout atual do desktop mode sem abrir uma activity nova; sem `--package`, escolhe o app extra visível mais recente como janela principal do reflow.
 - `ADB/adb_run_workspace_regression.sh`: wrapper host-side único para regressão canônica do workspace, com suites `smoke`, `daily`, `desktop-layout` e `full`.
@@ -279,9 +282,9 @@ Objetivo:
 - garante `desktop mode` ativo e move as tasks para o `desk` visível correto
 - aplica por padrão o layout contextual aprovado no tablet atual:
   - em `android_ssh`:
-    - `Termux` no topo esquerdo
-    - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) embaixo à esquerda
-    - `Termux:X11` à direita
+    - `Termux` ocupa toda a coluna esquerda
+    - `Termux:X11` fica no alto à direita
+    - cliente SSH (`Terminus`/`com.server.auditor.ssh.client`) fica embaixo à direita
   - em `local_workstation`:
     - `Termux` ampliado na coluna esquerda
     - `Termux:X11` à direita
@@ -309,6 +312,7 @@ Objetivo:
 - foco final padrão:
   - em contexto local no workstation, o foco final padrão continua sendo o app recém-aberto
   - quando o operador está no próprio tablet via `Terminus`, o helper mantém o foco final no SSH por padrão para preservar o controle da sessão
+  - isso vale também quando o pacote alvo faz parte do trio base; reabrir `Termux` ou `Termux:X11` não deve mais roubar o foco padrão do `android_ssh`
 - exemplo:
 
 ```bash

@@ -327,6 +327,22 @@ core_focus_target() {
   esac
 }
 
+core_final_focus_target() {
+  local core_focus="$1"
+
+  case "$FOCUS_TARGET" in
+    app)
+      printf '%s\n' "$core_focus"
+      ;;
+    termux|x11|ssh)
+      printf '%s\n' "$FOCUS_TARGET"
+      ;;
+    *)
+      printf '%s\n' "$core_focus"
+      ;;
+  esac
+}
+
 ensure_core_workspace() {
   local helper_args=()
 
@@ -700,13 +716,14 @@ apply_focus_large_layout() {
 }
 
 if core_focus="$(core_focus_target 2>/dev/null)"; then
-  step_begin "App alvo faz parte do trio base; reaplicando o layout canônico com foco em ${core_focus}"
+  core_final_focus="$(core_final_focus_target "$core_focus")"
+  step_begin "App alvo faz parte do trio base; reaplicando o layout canônico com foco em ${core_final_focus}"
   if [ "$WITH_OPENBOX" -eq 1 ]; then
-    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --focus "$core_focus" >/dev/null
+    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --focus "$core_final_focus" >/dev/null
   else
-    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --no-openbox --focus "$core_focus" >/dev/null
+    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --no-openbox --focus "$core_final_focus" >/dev/null
   fi
-  step_ok "Layout canônico reaplicado com foco em ${core_focus}."
+  step_ok "Layout canônico reaplicado com foco em ${core_final_focus}."
   exit 0
 fi
 

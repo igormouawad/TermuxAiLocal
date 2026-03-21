@@ -22,10 +22,10 @@ DISPLAY_ID=0
 DESK_ID=''
 BASE_DISPLAY_WIDTH=2560
 BASE_DISPLAY_HEIGHT=1600
-BASE_TERMUX_BOUNDS='32 96 1105 742'
+BASE_TERMUX_BOUNDS='32 96 1105 1488'
 BASE_TERMUX_BOUNDS_WORKSTATION='32 96 1105 1488'
-BASE_SSH_BOUNDS='32 749 1105 1488'
-BASE_X11_BOUNDS='1129 96 2528 944'
+BASE_SSH_BOUNDS='1129 951 2528 1488'
+BASE_X11_BOUNDS='1129 96 2528 806'
 X11_UI_REMOTE='/sdcard/Download/adb_consolidate_desktop_mode.xml'
 X11_UI_LOCAL="$(mktemp)"
 AUDIT_OWNER=0
@@ -33,6 +33,7 @@ SSH_MODE='auto'
 SSH_ENABLED=1
 SSH_COMPONENT=''
 SSH_LAYOUT_RESULT='SSH omitido neste contexto.'
+SSH_TERMINAL_COMPONENT_DEFAULT='com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity'
 
 cleanup() {
   local exit_code=$?
@@ -307,6 +308,15 @@ resolve_component() {
   printf '%s\n' "$resolved_component"
 }
 
+resolve_ssh_component() {
+  if [ "$SSH_PACKAGE" = 'com.server.auditor.ssh.client' ] && [ "$(termux::operator_context)" = 'android_ssh' ]; then
+    printf '%s\n' "$SSH_TERMINAL_COMPONENT_DEFAULT"
+    return 0
+  fi
+
+  resolve_component "$SSH_PACKAGE"
+}
+
 display_bounds() {
   local bounds_text
   local width_height
@@ -441,6 +451,20 @@ start_desktop_activity() {
   fi
 
   printf '%s\n' "$task_id"
+}
+
+start_or_reuse_ssh_activity() {
+  local existing_task_id
+
+  if [ "$(termux::operator_context)" = 'android_ssh' ]; then
+    existing_task_id="$(task_id_by_package "$SSH_PACKAGE" || true)"
+    if [ -n "$existing_task_id" ]; then
+      printf '%s\n' "$existing_task_id"
+      return 0
+    fi
+  fi
+
+  start_desktop_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client'
 }
 
 ensure_desktop_mode_on() {
@@ -775,7 +799,7 @@ focus_task() {
 }
 
 if [ "$SSH_ENABLED" -eq 1 ]; then
-  SSH_COMPONENT="$(resolve_component "$SSH_PACKAGE")"
+  SSH_COMPONENT="$(resolve_ssh_component)"
 fi
 ensure_desktop_mode_on
 DESK_ID="$(resolve_desktop_desk_id)"
@@ -798,7 +822,7 @@ step_begin "$(
 TERMUX_TASK_ID="$(start_desktop_activity "$TERMUX_COMPONENT" "$TERMUX_TOKEN" 'Termux')"
 X11_TASK_ID="$(start_desktop_activity "$X11_COMPONENT" "$X11_TOKEN" 'Termux:X11')"
 if [ "$SSH_ENABLED" -eq 1 ]; then
-  SSH_TASK_ID="$(start_desktop_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
+  SSH_TASK_ID="$(start_or_reuse_ssh_activity)"
   step_ok 'As três janelas principais foram detectadas no desktop.'
 else
   SSH_TASK_ID=''

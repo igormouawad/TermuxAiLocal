@@ -46,6 +46,10 @@
 - `SCENARIO_2_ANDROID_WIFI`
   - `inspect_state`: `SAFE`
   - `desktop_app_launch`, `desktop_layout_apply`, `x11_runtime_launch`, `x11_resolution_change`: `CAUTION`
+  - caminho validado nesta fase:
+    - `desktop_app_launch` pode reabrir `Termux`, `Termux:X11` e apps extras no desktop mode
+    - o foco final padrão deve voltar ao `Terminus` hospedado em `com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity`
+    - o cliente SSH existente deve ser reutilizado em vez de relançado pelo launcher principal
   - `desktop_mode_control`, `desktop_layout_restart`, `stack_reset`, `desktop_stack_start`, `baseline_validation`, `wifi_control_usb`, `termux_provision`, `termux_reinstall`, `debian_provision`, `debian_install`: `UNSAFE_FOR_IN_PROCESS_EXECUTION`
 
 - `UNKNOWN_OR_UNSAFE`

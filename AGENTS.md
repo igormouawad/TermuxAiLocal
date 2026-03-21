@@ -59,6 +59,7 @@ Exceptions that override the generic reading order above:
    - do not fall back to a mixed “USB or Wireless debugging” message in that no-device case
 8. When opening any visible Android app from the host, prefer `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package PACKAGE` over raw `am start` or low-level `adb_desktop_mode.sh open`; the canonical policy is desktop mode mandatory plus the `Foco grande` layout.
    - in `android_ssh` operator context, keep the new app large and visible but preserve SSH as the default final focus unless the task explicitly demands focus on the launched app
+   - in the base `android_ssh` trio layout, keep `Termux` using the full available left column height, keep `Termux:X11` in the upper-right slot, and keep `Terminus` below it in the lower-right slot
    - in `local_workstation` operator context, do not reopen `Terminus` by default; keep only `Termux` and `Termux:X11` as the core visible workspace
    - in that workstation context, keep `Termux:X11` in the validated right-side slot; when one extra app is opened, shrink `Termux` to the upper-left slot and place the newest extra app in the lower-left slot
    - if another extra app is already visible in that same workstation context, keep `Termux:X11` on the right, keep `Termux` upper-left, keep the newest extra app lower-left, and move the older extra app to the lower-right slot
