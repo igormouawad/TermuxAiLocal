@@ -102,7 +102,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_configure_phantom_processes.sh`: leitura/aplicação do override recomendado para limitar menos o Android contra `phantom processes`.
 - `ADB/adb_validate_baseline.sh`: validação reproduzível do baseline e geração de relatórios.
 - `ADB/adb_start_desktop.sh`: subida host-side do desktop suportado.
-- `ADB/adb_consolidate_freeform_desktop.sh`: consolida o desktop mode aprovado de forma contextual: no workstation local, `Termux` ampliado + `Termux:X11`; em `android_ssh`, mantém o trio com cliente SSH.
+- `ADB/adb_consolidate_desktop_mode.sh`: consolida o desktop mode aprovado de forma contextual: no workstation local, `Termux` ampliado + `Termux:X11`; em `android_ssh`, mantém o trio com cliente SSH.
 - `ADB/adb_open_desktop_app.sh`: entrypoint canônico para abrir um app Android visível em desktop mode, preservando o workspace base contextual e aplicando o layout `Foco grande`.
 - `ADB/adb_open_desktop_app.sh --reflow-only`: reaplica o layout atual do desktop mode sem abrir uma activity nova; sem `--package`, escolhe o app extra visível mais recente como janela principal do reflow.
 - `ADB/adb_run_workspace_regression.sh`: wrapper host-side único para regressão canônica do workspace, com suites `smoke`, `daily`, `desktop-layout` e `full`.
@@ -252,9 +252,9 @@ Objetivo:
 - abre `Termux:X11` e `Termux` antes de disparar `set-x11-resolution`
 - aceita `performance`, `balanced`, `native`, `show` e `custom LARGURAxALTURA`
 
-`ADB/adb_consolidate_freeform_desktop.sh`:
+`ADB/adb_consolidate_desktop_mode.sh`:
 
-- abre o workspace base diretamente em `windowingMode=freeform`
+- garante `desktop mode` ativo e move as tasks para o `desk` visível correto
 - aplica por padrão o layout contextual aprovado no tablet atual:
   - em `android_ssh`:
     - `Termux` no topo esquerdo
@@ -275,15 +275,15 @@ Objetivo:
   - em `android_ssh`, `Termux` + `Termux:X11` + SSH
   - em `local_workstation`, `Termux` + `Termux:X11`
 - aplica a política visual `Foco grande`:
-  - app recém-aberto como janela principal
-  - base contextual compactada em janelas auxiliares
+  - em `android_ssh`, o app recém-aberto continua sendo a janela principal e o trio base permanece visível
+  - em `local_workstation`, `Termux:X11` fica fixo à direita; quando há app extra, `Termux` encolhe para o topo esquerdo e o app mais novo ocupa o slot inferior esquerdo
   - a área útil real do desktop é medida a partir das insets da `StatusBar` e da `TaskbarWindow`, então o layout não usa mais `2560x1600` bruto
-  - quando já existe 1 app extra visível, o helper usa um arranjo de 5 janelas compatível com o limite real do Samsung:
-    - `X11` no topo esquerdo
-    - `Termux` embaixo à esquerda
-    - app principal grande no topo direito
-    - SSH e o app extra lado a lado na faixa inferior direita
-  - isso evita que janelas mínimas do Samsung caiam atrás da taskbar ou se sobreponham fora da área útil
+  - no `local_workstation`, quando já existe 1 app extra visível, o helper mantém:
+    - `Termux` no topo esquerdo
+    - app mais novo embaixo à esquerda
+    - `Termux:X11` no topo direito
+    - app extra anterior embaixo à direita
+  - isso evita overlap entre o app novo e o `Termux:X11`
 - foco final padrão:
   - em contexto local no workstation, o foco final padrão continua sendo o app recém-aberto
   - quando o operador está no próprio tablet via `Terminus`, o helper mantém o foco final no SSH por padrão para preservar o controle da sessão

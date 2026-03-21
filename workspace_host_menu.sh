@@ -155,12 +155,12 @@ handler_start_openbox() {
   handler_start_desktop_profile openbox
 }
 
-handler_consolidate_freeform_desktop() {
-  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh"
+handler_consolidate_desktop_mode() {
+  run_workspace_script "ADB/adb_consolidate_desktop_mode.sh"
 }
 
-handler_restart_freeform_desktop() {
-  run_workspace_script "ADB/adb_consolidate_freeform_desktop.sh" --restart
+handler_restart_desktop_mode() {
+  run_workspace_script "ADB/adb_consolidate_desktop_mode.sh" --restart
 }
 
 handler_open_settings_desktop() {
@@ -322,7 +322,7 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux" \
     "handler_reset_termux" \
     "1" \
-    "Reconstrói o desktop livre aprovado e limpa residuos controlados."
+    "Reconstrói o desktop mode aprovado e limpa residuos controlados."
 
   add_action \
     "reset_x11" \
@@ -331,7 +331,7 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus x11" \
     "handler_reset_x11" \
     "1" \
-    "Mesmo reset canônico, mas deixando o foco final no Termux:X11 dentro do desktop livre."
+    "Mesmo reset canônico, mas deixando o foco final no Termux:X11 dentro do desktop mode."
 
   add_action \
     "start_openbox" \
@@ -343,22 +343,22 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
     "Sobe o desktop diario com VirGL e DISPLAY=:1."
 
   add_action \
-    "freeform_consolidate" \
+    "desktop_mode_consolidate" \
     "ADB / Termux" \
-    "Consolidar desktop livre aprovado (contextual)" \
-    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh" \
-    "handler_consolidate_freeform_desktop" \
+    "Consolidar desktop mode aprovado (contextual)" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh" \
+    "handler_consolidate_desktop_mode" \
     "0" \
     "Aplica o layout aprovado por contexto: no workstation, Termux ampliado + Termux:X11; no android_ssh, mantém o trio com Terminus."
 
   add_action \
-    "freeform_restart" \
+    "desktop_mode_restart" \
     "ADB / Termux" \
-    "Fechar e reconstruir desktop livre aprovado (contextual)" \
-    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart" \
-    "handler_restart_freeform_desktop" \
+    "Fechar e reconstruir desktop mode aprovado (contextual)" \
+    "bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart" \
+    "handler_restart_desktop_mode" \
     "1" \
-    "Reconstrói o layout livre aprovado; no workstation, não reabre Terminus por padrão."
+    "Reconstrói o layout aprovado; no workstation, não reabre Terminus por padrão."
 
   add_action \
     "desktop_open_settings" \

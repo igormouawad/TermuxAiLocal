@@ -97,8 +97,8 @@ while [ "$#" -gt 0 ]; do
       ;;
     --help|-h)
       printf 'Uso: %s [--focus termux|x11] [--reboot-if-needed]\n' "$0"
-      printf '  --focus termux  reconstrói o desktop livre e deixa foco final no app Termux.\n'
-      printf '  --focus x11     reconstrói o desktop livre e deixa foco final no app Termux:X11.\n'
+      printf '  --focus termux  reconstrói o desktop mode e deixa foco final no app Termux.\n'
+      printf '  --focus x11     reconstrói o desktop mode e deixa foco final no app Termux:X11.\n'
       printf '  --reboot-if-needed  reinicia o dispositivo se resíduos persistentes impedirem o reset limpo.\n'
       exit 0
       ;;

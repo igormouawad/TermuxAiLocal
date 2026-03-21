@@ -140,7 +140,7 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEye
 bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux
 ```
 
-This reset now rebuilds the approved Samsung desktop mode/freeform layout instead of any legacy Android split layout.
+This reset now rebuilds the approved Samsung desktop mode layout instead of any legacy Android split layout.
 
 - Start validated desktop:
 
@@ -172,10 +172,10 @@ bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE
 bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite full
 ```
 
-- Consolidate the approved Android freeform desktop layout:
+- Consolidate the approved Android desktop mode layout:
 
 ```bash
-bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh
+bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh
 ```
 
 - Debian GUI app from host:

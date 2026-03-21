@@ -254,20 +254,35 @@ run_daily_tail_sequence() {
 
 run_desktop_layout_sequence() {
   local resolved_secondary=''
+  local operator_context
+  local consolidate_args=(--restart)
+  local app_args=()
+
+  operator_context="$(termux::operator_context)"
+
+  if [ "$operator_context" = 'android_ssh' ] || [ "$FINAL_FOCUS" = 'ssh' ]; then
+    consolidate_args+=(--with-ssh)
+    app_args+=(--with-ssh)
+  fi
+
+  if [ "$FINAL_FOCUS" != 'auto' ]; then
+    consolidate_args+=(--focus "$FINAL_FOCUS")
+    app_args+=(--focus "$FINAL_FOCUS")
+  fi
 
   step_begin 'Reconstruindo o trio canônico antes do teste de layout em desktop mode'
-  run_workspace_helper 'ADB/adb_consolidate_freeform_desktop.sh' --restart --focus ssh >/dev/null
+  run_workspace_helper 'ADB/adb_consolidate_desktop_mode.sh' "${consolidate_args[@]}" >/dev/null
   step_ok 'Trio base reaberto e estável.'
 
   step_begin "Abrindo ${PRIMARY_PACKAGE} com o layout Foco grande"
-  run_workspace_helper 'ADB/adb_open_desktop_app.sh' --package "$PRIMARY_PACKAGE" --focus "$FINAL_FOCUS" >/dev/null
+  run_workspace_helper 'ADB/adb_open_desktop_app.sh' --package "$PRIMARY_PACKAGE" "${app_args[@]}" >/dev/null
   step_ok "App principal ${PRIMARY_PACKAGE} aberto em desktop mode."
 
   step_begin 'Tentando abrir um app secundário para validar a grade compacta'
   resolved_secondary="$(resolve_secondary_package || true)"
   if [ -n "$resolved_secondary" ]; then
     termux::progress_note 'HOST' "App secundário escolhido: ${resolved_secondary}"
-    run_workspace_helper 'ADB/adb_open_desktop_app.sh' --package "$resolved_secondary" --focus "$FINAL_FOCUS" >/dev/null
+    run_workspace_helper 'ADB/adb_open_desktop_app.sh' --package "$resolved_secondary" "${app_args[@]}" >/dev/null
     step_ok "App secundário ${resolved_secondary} aberto e arranjado."
   else
     termux::progress_note 'HOST' 'Nenhum app secundário compatível foi encontrado; seguindo apenas com o app principal.'
@@ -275,7 +290,7 @@ run_desktop_layout_sequence() {
   fi
 
   step_begin 'Reaplicando o layout atual sem abrir app novo para validar o reflow explícito'
-  run_workspace_helper 'ADB/adb_open_desktop_app.sh' --reflow-only --focus "$FINAL_FOCUS" >/dev/null
+  run_workspace_helper 'ADB/adb_open_desktop_app.sh' --reflow-only "${app_args[@]}" >/dev/null
   step_ok 'Reflow explícito do desktop mode concluído.'
 }
 

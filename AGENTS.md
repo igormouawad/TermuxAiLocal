@@ -59,9 +59,11 @@ Exceptions that override the generic reading order above:
    - do not fall back to a mixed “USB or Wireless debugging” message in that no-device case
 8. When opening any visible Android app from the host, prefer `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package PACKAGE` over raw `am start` or low-level `adb_desktop_mode.sh open`; the canonical policy is desktop mode mandatory plus the `Foco grande` layout.
    - in `android_ssh` operator context, keep the new app large and visible but preserve SSH as the default final focus unless the task explicitly demands focus on the launched app
-   - in `local_workstation` operator context, do not reopen `Terminus` by default; keep only `Termux` and `Termux:X11` as the core visible workspace and give `Termux` the larger left column
-   - respect the real usable desktop area, not the raw physical display; on this Samsung build the taskbar consumes the lower inset and several freeform apps clamp to an effective minimum size around `646x646`
-   - when one extra visible app already exists, use the validated 5-window arrangement instead of stacking three auxiliaries vertically
+   - in `local_workstation` operator context, do not reopen `Terminus` by default; keep only `Termux` and `Termux:X11` as the core visible workspace
+   - in that workstation context, keep `Termux:X11` in the validated right-side slot; when one extra app is opened, shrink `Termux` to the upper-left slot and place the newest extra app in the lower-left slot
+   - if another extra app is already visible in that same workstation context, keep `Termux:X11` on the right, keep `Termux` upper-left, keep the newest extra app lower-left, and move the older extra app to the lower-right slot
+   - respect the real usable desktop area, not the raw physical display; on this Samsung build the taskbar consumes the lower inset and several resizable desktop windows clamp to an effective minimum size around `646x646`
+   - when another extra app is already visible, use the validated non-overlapping multi-window arrangement instead of leaving overlap in the usable desktop area
 9. For execution, testing, validation, provisioning, recovery, or command-map tasks, prefer `Local-Model-Execution-Guide.md`; do not substitute `Local-Model-System-Prompt.md` unless the user is explicitly tuning the local model behavior itself.
 10. If the user provides an explicit ordered command list, execute that exact list in that order; do not replace command 1 with a canonical shortcut, summary command, or generic reset/start flow.
 11. If the user explicitly says to stop at the point of failure, do not run extra diagnostics after the first failed requested command unless the user explicitly asked for diagnostic follow-up.

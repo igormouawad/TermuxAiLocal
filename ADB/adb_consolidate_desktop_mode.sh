@@ -18,7 +18,6 @@ RESTART_APPS=0
 ENSURE_OPENBOX=1
 TOTAL_STEPS=5
 CURRENT_STEP=0
-WINDOWING_MODE=5
 DISPLAY_ID=0
 DESK_ID=''
 BASE_DISPLAY_WIDTH=2560
@@ -27,7 +26,7 @@ BASE_TERMUX_BOUNDS='32 96 1105 742'
 BASE_TERMUX_BOUNDS_WORKSTATION='32 96 1105 1488'
 BASE_SSH_BOUNDS='32 749 1105 1488'
 BASE_X11_BOUNDS='1129 96 2528 944'
-X11_UI_REMOTE='/sdcard/Download/adb_consolidate_freeform_desktop.xml'
+X11_UI_REMOTE='/sdcard/Download/adb_consolidate_desktop_mode.xml'
 X11_UI_LOCAL="$(mktemp)"
 AUDIT_OWNER=0
 SSH_MODE='auto'
@@ -48,7 +47,7 @@ trap cleanup EXIT
 
 usage() {
   printf 'Uso: %s [--restart] [--no-openbox] [--focus auto|termux|x11|ssh] [--ssh-package PACKAGE] [--with-ssh|--without-ssh] [--profile openbox-stable|openbox-maxperf|openbox-compat|openbox-vulkan-exp]\n' "$0"
-  printf '  --restart     fecha Termux, Termux:X11 e o cliente SSH antes de reabrir tudo em freeform.\n'
+  printf '  --restart     fecha Termux, Termux:X11 e o cliente SSH antes de reconstruir o desktop mode.\n'
   printf '  --no-openbox  apenas consolida as janelas; não sobe a sessão Openbox/X11.\n'
   printf '  --focus       escolhe a janela final em foco: auto, termux, x11 ou ssh.\n'
   printf '  --ssh-package pacote Android do cliente SSH a ser posicionado na coluna esquerda inferior quando o SSH estiver habilitado.\n'
@@ -157,7 +156,7 @@ termux::require_host_command \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
 DEVICE_ID="$(termux::resolve_target_device)"
-termux::audit_session_begin 'Consolidação do desktop freeform Samsung' "$0" "$DEVICE_ID"
+termux::audit_session_begin 'Consolidação do desktop mode Samsung' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
 
 resolve_ssh_enabled() {
@@ -206,7 +205,7 @@ fi
 run_adb() {
   termux::adb_run \
     "$DEVICE_ID" \
-    'A consolidação do desktop freeform foi interrompida.' \
+    'A consolidação do desktop mode foi interrompida.' \
     'Corrigir a conectividade ADB ou o erro retornado e executar novamente.' \
     "$@"
 }
@@ -354,8 +353,8 @@ display_bounds() {
     fail \
       'detecção da geometria do display Android' \
       "${width_height:-sem saída}" \
-      'O helper não conseguiu calcular os bounds do desktop livre.' \
-      'Confirmar que o device está em desktop mode/freeform e repetir a consolidação.'
+      'O helper não conseguiu calcular os bounds do desktop mode.' \
+      'Confirmar que o device está em desktop mode e repetir a consolidação.'
   fi
 
   width="${width_height%x*}"
@@ -415,7 +414,7 @@ compute_layout() {
   DISPLAY_BOUNDS="${display_left} ${display_top} ${display_right} ${display_bottom}"
 }
 
-start_freeform_activity() {
+start_desktop_activity() {
   local component_name="$1"
   local activity_token="$2"
   local label="$3"
@@ -423,7 +422,6 @@ start_freeform_activity() {
 
   run_adb shell cmd activity start-activity \
     --display "$DISPLAY_ID" \
-    --windowingMode "$WINDOWING_MODE" \
     -W \
     -n "$component_name" \
     >/dev/null
@@ -433,11 +431,27 @@ start_freeform_activity() {
     fail \
       "abertura da janela $label" \
       "A activity $component_name não gerou uma task detectável." \
-      'O Android não criou a janela livre esperada para esse app.' \
+      'O Android não criou a janela esperada para esse app dentro do desktop mode.' \
       'Reabrir o app manualmente no tablet e repetir a consolidação.'
   fi
 
   printf '%s\n' "$task_id"
+}
+
+ensure_desktop_mode_on() {
+  if termux::desktop_mode_active "$DEVICE_ID"; then
+    return 0
+  fi
+
+  adb -s "$DEVICE_ID" shell wm shell desktopmode toggleDesktopWindowingInDefaultDisplay >/dev/null 2>&1 || true
+
+  if ! termux::wait_for_desktop_mode_state "$DEVICE_ID" on 12; then
+    fail \
+      'wm shell desktopmode toggleDesktopWindowingInDefaultDisplay' \
+      "$(termux::desktop_mode_dump "$DEVICE_ID")" \
+      'O Android não entrou em desktop mode dentro do tempo esperado.' \
+      'Confirmar visualmente o launcher Samsung e repetir a consolidação.'
+  fi
 }
 
 resolve_desktop_desk_id() {
@@ -474,7 +488,7 @@ resolve_desktop_desk_id() {
   fail \
     'wm shell desktopmode dump' \
     "${dump_output:-sem saída}" \
-    'O Android não expôs um desk ativo para o modo desktop/freeform.' \
+    'O Android não expôs um desk ativo para o desktop mode.' \
     'Confirmar que o dispositivo está em desktop mode antes de consolidar as janelas.'
 }
 
@@ -505,43 +519,64 @@ task_id_by_package() {
   '
 }
 
-task_windowing_mode() {
-  local task_id="$1"
+active_desk_visible_tasks() {
+  local dump_output
+  local desk_id
 
-  adb -s "$DEVICE_ID" shell cmd activity stack list 2>/dev/null | awk -v task_id="$task_id" '
-    /^RootTask id=/ {
-      current_mode = ""
+  dump_output="$(termux::desktop_mode_dump "$DEVICE_ID")"
+  desk_id="$(
+    printf '%s\n' "$dump_output" \
+      | sed -nE 's/^[[:space:]]*activeDesk=([0-9]+).*/\1/p' \
+      | head -n1
+  )"
+
+  [ -n "$desk_id" ] || return 1
+
+  printf '%s\n' "$dump_output" | awk -v desk_id="$desk_id" '
+    $0 ~ ("Desk #" desk_id ":") {
+      in_desk = 1
       next
     }
 
-    /mWindowingMode=/ {
-      if (match($0, /mWindowingMode=[^ ]+/)) {
-        current_mode = substr($0, RSTART + length("mWindowingMode="), RLENGTH - length("mWindowingMode="))
-      }
-      next
+    in_desk && $0 ~ /^[[:space:]]*Desk #[0-9]+:/ {
+      exit
     }
 
-    $0 ~ ("taskId=" task_id ":") {
-      if (current_mode != "") {
-        print current_mode
+    in_desk && $0 ~ /visibleTasks=\[/ {
+      line = $0
+      sub(/^.*visibleTasks=\[/, "", line)
+      sub(/\].*$/, "", line)
+      gsub(/[[:space:]]/, "", line)
+
+      if (line == "") {
         exit
       }
+
+      n = split(line, items, ",")
+      for (i = 1; i <= n; i++) {
+        if (items[i] != "") {
+          print items[i]
+        }
+      }
+      exit
     }
   '
 }
 
-wait_for_task_windowing_mode() {
+task_visible_in_active_desk() {
   local task_id="$1"
-  local expected_mode="$2"
-  local timeout_seconds="${3:-10}"
+  active_desk_visible_tasks 2>/dev/null | grep -Fxq "$task_id"
+}
+
+wait_for_task_visible_in_active_desk() {
+  local task_id="$1"
+  local timeout_seconds="${2:-10}"
   local deadline_seconds
-  local current_mode
 
   deadline_seconds=$(( $(date +%s) + timeout_seconds ))
 
   while :; do
-    current_mode="$(task_windowing_mode "$task_id" || true)"
-    if [ "$current_mode" = "$expected_mode" ]; then
+    if task_visible_in_active_desk "$task_id"; then
       return 0
     fi
 
@@ -555,26 +590,21 @@ wait_for_task_windowing_mode() {
   return 1
 }
 
-move_task_to_desktop_desk() {
+ensure_task_in_active_desk() {
   local task_id="$1"
   local label="$2"
-  local current_mode
 
-  current_mode="$(task_windowing_mode "$task_id" || true)"
-  if [ "$current_mode" = 'freeform' ]; then
+  if task_visible_in_active_desk "$task_id"; then
     return 0
   fi
 
-  # Samsung's desktopmode shell often prints "Not implemented." even when the
-  # task is actually converted into a desktop freeform window. Validate by
-  # polling the real task mode instead of trusting the raw command text.
   adb -s "$DEVICE_ID" shell wm shell desktopmode moveTaskToDesk "$task_id" "$DESK_ID" >/dev/null 2>&1 || true
 
-  if ! wait_for_task_windowing_mode "$task_id" freeform 10; then
+  if ! wait_for_task_visible_in_active_desk "$task_id" 10; then
     fail \
       "desktopmode moveTaskToDesk $task_id $DESK_ID" \
-      "$(adb -s "$DEVICE_ID" shell cmd activity stack list 2>/dev/null | tr -d '\r')" \
-      "A task $label não entrou em modo freeform depois da conversão para o desktop." \
+      "$(termux::desktop_mode_dump "$DEVICE_ID")" \
+      "A task $label não ficou visível no desk ativo depois da conversão para o desktop mode." \
       'Confirmar que o Android está em desktop mode e repetir a consolidação.'
   fi
 }
@@ -626,10 +656,10 @@ refresh_layout_tasks() {
 }
 
 apply_layout_to_current_tasks() {
-  move_task_to_desktop_desk "$TERMUX_TASK_ID" 'Termux'
-  move_task_to_desktop_desk "$X11_TASK_ID" 'Termux:X11'
+  ensure_task_in_active_desk "$TERMUX_TASK_ID" 'Termux'
+  ensure_task_in_active_desk "$X11_TASK_ID" 'Termux:X11'
   if [ "$SSH_ENABLED" -eq 1 ]; then
-    move_task_to_desktop_desk "$SSH_TASK_ID" 'SSH client'
+    ensure_task_in_active_desk "$SSH_TASK_ID" 'SSH client'
   fi
 
   compute_layout
@@ -668,7 +698,7 @@ ensure_openbox_session() {
     fail \
       "$start_command" \
       'A surface do Termux:X11 não apareceu após a subida do Openbox.' \
-      'A sessão gráfica não ficou pronta no modo desktop livre.' \
+      'A sessão gráfica não ficou pronta no desktop mode.' \
       'Reabrir a janela do Termux:X11 e repetir a consolidação.'
   fi
 
@@ -742,9 +772,10 @@ focus_task() {
 if [ "$SSH_ENABLED" -eq 1 ]; then
   SSH_COMPONENT="$(resolve_component "$SSH_PACKAGE")"
 fi
+ensure_desktop_mode_on
 DESK_ID="$(resolve_desktop_desk_id)"
 
-step_begin 'Preparando o desktop mode livre e limpando UI residual do Termux:API'
+step_begin 'Preparando o desktop mode Samsung e limpando UI residual do Termux:API'
 clear_termux_api_ui
 
 if [ "$RESTART_APPS" -eq 1 ]; then
@@ -754,15 +785,15 @@ step_ok 'Contexto Android pronto para reabrir o trio principal.'
 
 step_begin "$(
   if [ "$SSH_ENABLED" -eq 1 ]; then
-    printf '%s' 'Abrindo Termux, Termux:X11 e o cliente SSH em janelas livres'
+    printf '%s' 'Abrindo Termux, Termux:X11 e o cliente SSH no desktop mode'
   else
-    printf '%s' 'Abrindo Termux e Termux:X11 em janelas livres'
+    printf '%s' 'Abrindo Termux e Termux:X11 no desktop mode'
   fi
 )"
-TERMUX_TASK_ID="$(start_freeform_activity "$TERMUX_COMPONENT" "$TERMUX_TOKEN" 'Termux')"
-X11_TASK_ID="$(start_freeform_activity "$X11_COMPONENT" "$X11_TOKEN" 'Termux:X11')"
+TERMUX_TASK_ID="$(start_desktop_activity "$TERMUX_COMPONENT" "$TERMUX_TOKEN" 'Termux')"
+X11_TASK_ID="$(start_desktop_activity "$X11_COMPONENT" "$X11_TOKEN" 'Termux:X11')"
 if [ "$SSH_ENABLED" -eq 1 ]; then
-  SSH_TASK_ID="$(start_freeform_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
+  SSH_TASK_ID="$(start_desktop_activity "$SSH_COMPONENT" "$SSH_TOKEN" 'SSH client')"
   step_ok 'As três janelas principais foram detectadas no desktop.'
 else
   SSH_TASK_ID=''
@@ -796,7 +827,7 @@ case "$FOCUS_TARGET" in
 esac
 step_ok "Foco final entregue para ${FOCUS_TARGET}."
 
-printf 'Desktop freeform consolidado no dispositivo %s.\n' "$DEVICE_ID"
+printf 'Desktop mode consolidado no dispositivo %s.\n' "$DEVICE_ID"
 printf 'Display: [%s]\n' "$DISPLAY_BOUNDS"
 printf '%s\n' "$TERMUX_LAYOUT_RESULT"
 if [ "$SSH_ENABLED" -eq 1 ]; then

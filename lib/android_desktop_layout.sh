@@ -55,6 +55,47 @@ desktop::active_desk_id() {
   printf '%s\n' "$desk_id"
 }
 
+desktop::active_desk_visible_tasks() {
+  local device_id="$1"
+  local desk_id
+  local dump_output
+
+  desk_id="$(desktop::active_desk_id "$device_id" || true)"
+  [ -n "$desk_id" ] || return 1
+
+  dump_output="$(desktop::dump "$device_id")"
+
+  printf '%s\n' "$dump_output" | awk -v desk_id="$desk_id" '
+    $0 ~ ("Desk #" desk_id ":") {
+      in_desk = 1
+      next
+    }
+
+    in_desk && $0 ~ /^[[:space:]]*Desk #[0-9]+:/ {
+      exit
+    }
+
+    in_desk && $0 ~ /visibleTasks=\[/ {
+      line = $0
+      sub(/^.*visibleTasks=\[/, "", line)
+      sub(/\].*$/, "", line)
+      gsub(/[[:space:]]/, "", line)
+
+      if (line == "") {
+        exit
+      }
+
+      n = split(line, items, ",")
+      for (i = 1; i <= n; i++) {
+        if (items[i] != "") {
+          print items[i]
+        }
+      }
+      exit
+    }
+  '
+}
+
 desktop::task_id_by_package() {
   local device_id="$1"
   local package_name="$2"
@@ -111,45 +152,23 @@ desktop::visible_task_table() {
   '
 }
 
-desktop::task_windowing_mode() {
+desktop::task_visible_in_active_desk() {
   local device_id="$1"
   local task_id="$2"
 
-  adb -s "$device_id" shell cmd activity stack list 2>/dev/null | awk -v task_id="$task_id" '
-    /^RootTask id=/ {
-      current_mode = ""
-      next
-    }
-
-    /mWindowingMode=/ {
-      if (match($0, /mWindowingMode=[^ ]+/)) {
-        current_mode = substr($0, RSTART + length("mWindowingMode="), RLENGTH - length("mWindowingMode="))
-      }
-      next
-    }
-
-    $0 ~ ("taskId=" task_id ":") {
-      if (current_mode != "") {
-        print current_mode
-        exit
-      }
-    }
-  '
+  desktop::active_desk_visible_tasks "$device_id" 2>/dev/null | grep -Fxq "$task_id"
 }
 
-desktop::wait_for_task_windowing_mode() {
+desktop::wait_for_task_visible_in_active_desk() {
   local device_id="$1"
   local task_id="$2"
-  local expected_mode="$3"
-  local timeout_seconds="${4:-10}"
+  local timeout_seconds="${3:-10}"
   local deadline_seconds
-  local current_mode
 
   deadline_seconds=$(( $(date +%s) + timeout_seconds ))
 
   while :; do
-    current_mode="$(desktop::task_windowing_mode "$device_id" "$task_id" || true)"
-    if [ "$current_mode" = "$expected_mode" ]; then
+    if desktop::task_visible_in_active_desk "$device_id" "$task_id"; then
       return 0
     fi
 
@@ -163,17 +182,17 @@ desktop::wait_for_task_windowing_mode() {
   return 1
 }
 
-desktop::move_task_to_desk() {
+desktop::ensure_task_in_active_desk() {
   local device_id="$1"
   local task_id="$2"
   local desk_id="$3"
 
-  if [ "$(desktop::task_windowing_mode "$device_id" "$task_id" || true)" = 'freeform' ]; then
+  if desktop::task_visible_in_active_desk "$device_id" "$task_id"; then
     return 0
   fi
 
   adb -s "$device_id" shell wm shell desktopmode moveTaskToDesk "$task_id" "$desk_id" >/dev/null 2>&1 || true
-  desktop::wait_for_task_windowing_mode "$device_id" "$task_id" freeform 10
+  desktop::wait_for_task_visible_in_active_desk "$device_id" "$task_id" 10
 }
 
 desktop::resize_task() {
@@ -210,15 +229,13 @@ desktop::focus_task() {
   fi
 }
 
-desktop::start_freeform_activity() {
+desktop::start_desktop_activity() {
   local device_id="$1"
   local display_id="$2"
-  local windowing_mode="$3"
-  local component_name="$4"
+  local component_name="$3"
 
   adb -s "$device_id" shell cmd activity start-activity \
     --display "$display_id" \
-    --windowingMode "$windowing_mode" \
     -W \
     -n "$component_name" \
     >/dev/null 2>&1

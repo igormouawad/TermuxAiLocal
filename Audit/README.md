@@ -158,7 +158,7 @@ Para manter a regressão do workspace:
 2. preserve as suites `smoke`, `daily`, `desktop-layout` e `full`
 3. se mudar o layout visual, revalide também:
    - `ADB/adb_open_desktop_app.sh --reflow-only`
-   - `ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+   - `ADB/adb_consolidate_desktop_mode.sh --restart --focus ssh`
 4. mantenha os perfis JSON de referência alinhados com o wrapper e com `Local-Model-Execution-Guide.md`
 
 ## Limites conhecidos

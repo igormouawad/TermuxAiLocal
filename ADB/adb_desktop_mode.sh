@@ -9,13 +9,11 @@ source "$(cd -- "${SCRIPT_DIR}/.." && pwd)/lib/termux_common.sh"
 ACTION='status'
 DEVICE_ID=''
 DISPLAY_ID=0
-WINDOWING_MODE=5
 PACKAGE_NAME=''
 COMPONENT_NAME=''
 TASK_ID=''
 BOUNDS_TEXT=''
 FOCUS_AFTER=1
-FORCE_FREEFORM=1
 AUDIT_OWNER=0
 
 finish_audit() {
@@ -56,12 +54,11 @@ Selecao do alvo:
   --task-id ID             opera sobre uma task ja existente.
   --bounds 'L T R B'       bounds absolutos para resize/reposicionamento.
   --no-focus               nao tenta trazer a task para frente ao final.
-  --no-force-freeform      em open, nao passa --windowingMode 5 explicitamente.
 
 Notas:
   - neste Samsung, o estado confiavel do modo desktop vem de `wm shell desktopmode dump`
-  - quando desktop mode esta ativo, apps resizable tendem a abrir em FREEFORM automaticamente
-  - o helper usa o caminho mais deterministico: pode forcar --windowingMode 5, mover para o desk ativo e aplicar resize explicito
+  - o helper trata como sucesso apenas tasks visiveis no desk ativo
+  - a abertura padrao ocorre com desktop mode ativo; depois o helper garante a task no desk correto e aplica resize explicito
 EOF
 }
 
@@ -131,10 +128,6 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-focus)
       FOCUS_AFTER=0
-      shift
-      ;;
-    --no-force-freeform)
-      FORCE_FREEFORM=0
       shift
       ;;
     --help|-h)
@@ -349,43 +342,74 @@ resolve_task_id() {
   printf '%s\n' "$TASK_ID"
 }
 
-task_windowing_mode() {
+ensure_task_in_active_desk() {
   local task_id="$1"
+  local desk_id="$2"
 
-  adb -s "$DEVICE_ID" shell cmd activity stack list 2>/dev/null | awk -v task_id="$task_id" '
-    /^RootTask id=/ {
-      current_mode = ""
+  adb -s "$DEVICE_ID" shell wm shell desktopmode moveTaskToDesk "$task_id" "$desk_id" >/dev/null 2>&1 || true
+
+  wait_for_task_visible_in_active_desk "$task_id" 10 || fail \
+    "wm shell desktopmode moveTaskToDesk $task_id $desk_id" \
+    "$(desktop_dump)" \
+    'A task não ficou visível no desk ativo depois da conversão para o desktop mode.' \
+    'Confirmar que o modo desktop segue ativo e repetir a operação.'
+}
+
+active_desk_visible_tasks() {
+  local dump_output="$1"
+  local desk_id
+
+  desk_id="$(active_desk_id "$dump_output" || true)"
+  [ -n "$desk_id" ] || return 1
+
+  printf '%s\n' "$dump_output" | awk -v desk_id="$desk_id" '
+    $0 ~ ("Desk #" desk_id ":") {
+      in_desk = 1
       next
     }
 
-    /mWindowingMode=/ {
-      if (match($0, /mWindowingMode=[^ ]+/)) {
-        current_mode = substr($0, RSTART + length("mWindowingMode="), RLENGTH - length("mWindowingMode="))
-      }
-      next
+    in_desk && $0 ~ /^[[:space:]]*Desk #[0-9]+:/ {
+      exit
     }
 
-    $0 ~ ("taskId=" task_id ":") {
-      if (current_mode != "") {
-        print current_mode
+    in_desk && $0 ~ /visibleTasks=\[/ {
+      line = $0
+      sub(/^.*visibleTasks=\[/, "", line)
+      sub(/\].*$/, "", line)
+      gsub(/[[:space:]]/, "", line)
+
+      if (line == "") {
         exit
       }
+
+      n = split(line, items, ",")
+      for (i = 1; i <= n; i++) {
+        if (items[i] != "") {
+          print items[i]
+        }
+      }
+      exit
     }
   '
 }
 
-wait_for_task_windowing_mode() {
+task_visible_in_active_desk() {
   local task_id="$1"
-  local expected_mode="$2"
-  local timeout_seconds="${3:-10}"
+  local dump_output
+
+  dump_output="$(desktop_dump)"
+  active_desk_visible_tasks "$dump_output" | grep -Fxq "$task_id"
+}
+
+wait_for_task_visible_in_active_desk() {
+  local task_id="$1"
+  local timeout_seconds="${2:-10}"
   local deadline_seconds
-  local current_mode
 
   deadline_seconds=$(( $(date +%s) + timeout_seconds ))
 
   while :; do
-    current_mode="$(task_windowing_mode "$task_id" || true)"
-    if [ "$current_mode" = "$expected_mode" ]; then
+    if task_visible_in_active_desk "$task_id"; then
       return 0
     fi
 
@@ -397,25 +421,6 @@ wait_for_task_windowing_mode() {
   done
 
   return 1
-}
-
-ensure_task_in_active_desk() {
-  local task_id="$1"
-  local desk_id="$2"
-  local current_mode
-
-  current_mode="$(task_windowing_mode "$task_id" || true)"
-  if [ "$current_mode" = 'freeform' ]; then
-    return 0
-  fi
-
-  adb -s "$DEVICE_ID" shell wm shell desktopmode moveTaskToDesk "$task_id" "$desk_id" >/dev/null 2>&1 || true
-
-  wait_for_task_windowing_mode "$task_id" freeform 10 || fail \
-    "wm shell desktopmode moveTaskToDesk $task_id $desk_id" \
-    "$(adb -s "$DEVICE_ID" shell dumpsys activity containers 2>/dev/null | tr -d '\r')" \
-    'A task não entrou em FREEFORM depois da conversão para o desk ativo.' \
-    'Confirmar que o modo desktop segue ativo e repetir a operação.'
 }
 
 resize_task_to_bounds() {
@@ -495,18 +500,10 @@ open_action() {
     component_name="$(resolve_component "$PACKAGE_NAME")"
   fi
 
-  if [ "$FORCE_FREEFORM" -eq 1 ]; then
-    run_adb shell cmd activity start-activity \
-      --display "$DISPLAY_ID" \
-      --windowingMode "$WINDOWING_MODE" \
-      -W \
-      -n "$component_name" >/dev/null
-  else
-    run_adb shell cmd activity start-activity \
-      --display "$DISPLAY_ID" \
-      -W \
-      -n "$component_name" >/dev/null
-  fi
+  run_adb shell cmd activity start-activity \
+    --display "$DISPLAY_ID" \
+    -W \
+    -n "$component_name" >/dev/null
 
   resolved_task_id="$(termux::wait_for_activity_task_id "$DEVICE_ID" "$component_name" 10 0.25 || true)"
   if [ -z "$resolved_task_id" ]; then

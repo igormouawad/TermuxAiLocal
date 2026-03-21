@@ -1261,7 +1261,7 @@ termux::ensure_termux_workspace_ready() {
   set +e
   output="$(
     TERMUXAI_DEVICE_ID="$device_id" \
-      bash "${TERMUX_WORKSPACE_ROOT}/ADB/adb_consolidate_freeform_desktop.sh" \
+      bash "${TERMUX_WORKSPACE_ROOT}/ADB/adb_consolidate_desktop_mode.sh" \
         --no-openbox \
         --focus "$focus_target" 2>&1
   )"

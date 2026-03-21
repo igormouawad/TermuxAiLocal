@@ -6,8 +6,8 @@ This note captures the cleaned-up flow for the Termux/X11 stack, including the h
 
 - Always use user `0` on the device. Validate with `adb shell pm list users` and reject `SecurityException` outputs.
 - Keep the device awake while experimenting: `adb shell settings put global stay_on_while_plugged_in 3` and ensure animations are set to `0`.
-- Restart Termux, Termux:X11 and the managed GUI state before each run. The host reset helper (`ADB/adb_reset_termux_stack.sh`) automates this and rebuilds the validated desktop mode/freeform layout, optionally leaving focus on either Termux or Termux:X11.
-- After each non-reinstall restart of the GUI pair, restore the approved desktop mode/freeform layout: `Termux` top-left, `Termux:X11` on the right, SSH client bottom-left, and `Termux:API` kept off the visible desktop.
+- Restart Termux, Termux:X11 and the managed GUI state before each run. The host reset helper (`ADB/adb_reset_termux_stack.sh`) automates this and rebuilds the validated desktop mode layout, optionally leaving focus on either Termux or Termux:X11.
+- After each non-reinstall restart of the GUI pair, restore the approved desktop mode layout: `Termux` top-left, `Termux:X11` on the right, SSH client bottom-left, and `Termux:API` kept off the visible desktop.
 - The reset helper now also performs a best-effort cleanup of managed Openbox/XFCE/VirGL/DBus leftovers inside the Termux app context, so a new test starts from a genuinely clean GUI state.
 - When `run-as com.termux` is available (debug APK), use `ADB/adb_termux_send_command.sh` with structured spool transport. For X11/GPU-sensitive helpers, prefer the interactive-shell spool mode so the command executes in the real Termux shell namespace while the host still receives stdout/stderr/exit code.
 - If the tablet is being used interactively for unrelated work, pause host automation first. Before any new ADB/device action, ask the operator to stop using the tablet and restore the approved desktop trio if needed.

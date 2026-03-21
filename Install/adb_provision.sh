@@ -154,15 +154,15 @@ run_adb shell chmod +x "$TERMUX_MENU_TARGET" >/dev/null
 run_adb shell chmod 644 "$AUDIT_RUNNER_TARGET" >/dev/null
 step_ok 'Payload principal, bootstrap, menu Termux e assets do audit runner enviados com sucesso.'
 
-step_begin 'Reconstruindo o desktop livre base antes da execução manual no Termux'
+step_begin 'Reconstruindo o desktop mode base antes da execução manual no Termux'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O provisionamento terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
-    'Reconstruir o desktop livre aprovado ou repetir o provisionamento.'
+    'O provisionamento terminou sem conseguir restaurar o desktop mode obrigatório do workspace.' \
+    'Reconstruir o desktop mode aprovado ou repetir o provisionamento.'
 fi
-step_ok 'Desktop livre preparado para a execução manual do payload.'
+step_ok 'Desktop mode preparado para a execução manual do payload.'
 termux::audit_launch_device_watch "$DEVICE_ID"
 
 printf 'Provisionamento concluído no host.\n'

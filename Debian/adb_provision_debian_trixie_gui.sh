@@ -85,7 +85,7 @@ termux::require_host_command \
   'Não é possível orquestrar o dispositivo Android a partir do host.' \
   'Instalar Android Platform Tools no host e tentar novamente.'
 
-step_begin 'Resetando o workspace e preparando o desktop livre base'
+step_begin 'Resetando o workspace e preparando o desktop mode base'
 bash "${PROJECT_ROOT}/ADB/adb_reset_termux_stack.sh" --focus termux >/dev/null
 
 DEVICE_ID=$(termux::resolve_target_device)
@@ -108,15 +108,15 @@ for file_name in "${PAYLOAD_FILES[@]}"; do
 done
 step_ok 'Payloads Debian GUI enviados e marcados como executáveis.'
 
-step_begin 'Reconstruindo o desktop livre antes da instalação manual ou síncrona'
+step_begin 'Reconstruindo o desktop mode antes da instalação manual ou síncrona'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O provisionamento Debian terminou sem conseguir restaurar o desktop mode livre obrigatório do workspace.' \
-    'Reconstruir o desktop livre aprovado e repetir o provisionamento.'
+    'O provisionamento Debian terminou sem conseguir restaurar o desktop mode obrigatório do workspace.' \
+    'Reconstruir o desktop mode aprovado e repetir o provisionamento.'
 fi
-step_ok 'Desktop livre pronto para a etapa Debian seguinte.'
+step_ok 'Desktop mode pronto para a etapa Debian seguinte.'
 termux::audit_launch_device_watch "$DEVICE_ID"
 
 install_command=(bash /data/local/tmp/install_debian_trixie_gui.sh)

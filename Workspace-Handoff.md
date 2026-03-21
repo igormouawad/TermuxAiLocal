@@ -114,7 +114,7 @@ Do not treat this file as a historical changelog.
     - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh balanced`
     - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_set_x11_resolution.sh performance`
     - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
-    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart --focus ssh`
     - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_provision.sh`
     - `bash ~/Documentos/AI/TermuxAiLocal/Debian/adb_provision_debian_trixie_gui.sh`
     - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh --dry-run`
@@ -232,7 +232,7 @@ Do not treat this file as a historical changelog.
 - Accepted 3D path: `VirGL plain` with `GALLIUM_DRIVER=virpipe`
 - Display baseline: `Termux:X11` on `DISPLAY=:1`
 - Preferred manual Android desktop layout is now contextual:
-  - in `android_ssh`: freeform trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
+  - in `android_ssh`: desktop trio with `Termux` top-left, `Terminus` bottom-left, and `Termux:X11` on the right
   - in `local_workstation`: `Termux` enlarged on the left and `Termux:X11` on the right, without reopening `Terminus`
 - Shared-device coordination rule:
   - while the operator is using the Android tablet for unrelated work, do not touch the device via ADB
@@ -247,9 +247,13 @@ Do not treat this file as a historical changelog.
     - `Termux`: `[32,96][1105,1488]`
     - `Termux:X11`: `[1129,96][2528,944]`
 - Canonical helper for that manual desktop layout:
-  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh`
+  - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh`
 - Current validated behavior of that helper:
-  - after a cold Android reboot, the helper now reapplies the freeform layout after the Openbox/X11 session is ensured
+  - the old public helper name was retired; the workspace now treats Samsung desktop mode as the only canonical managed path
+  - the helper now guarantees `desktop mode` on first and only treats a task as correctly placed when it is visible in `visibleTasks` for the live `activeDesk`
+  - task placement is now validated by live desk visibility, not by legacy window-mode heuristics
+  - legacy desktop-windowing terminology was removed from the public scripts, menu entries, runbooks, and handoff; the supported contract is now only `desktop mode`
+  - after a cold Android reboot, the helper now reapplies the desktop mode layout after the Openbox/X11 session is ensured
   - this avoids the post-boot regression where managed windows could be relaunched fullscreen and escape the approved desktop arrangement
   - latest end-to-end reboot validation on the live tablet passed with this exact sequence:
     - force-stop `com.termux.api`, `com.termux.x11`, `com.termux`, and `com.server.auditor.ssh.client`
@@ -257,7 +261,7 @@ Do not treat this file as a historical changelog.
     - full Android reboot
     - wait for `sys.boot_completed=1` and `dev.bootcomplete=1`
     - `adb_desktop_mode.sh on`
-    - `TERMUXAI_DEVICE_ID=<ADB_USB_SERIAL> bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_freeform_desktop.sh --restart --focus ssh`
+    - `TERMUXAI_DEVICE_ID=<ADB_USB_SERIAL> bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart --focus ssh`
   - current reboot hygiene rule:
     - before any host-triggered Android reboot in this workspace, force-stop `com.termux`, `com.termux.x11`, `com.termux.api`, and `com.server.auditor.ssh.client`
     - toggle `desktopmode` off back to the launcher/tablet mode
@@ -269,12 +273,12 @@ Do not treat this file as a historical changelog.
   - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
   - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows
   - the last validated manual SSH target inside `Terminus` was `DESKTOP_LINUX`
-  - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_freeform_desktop.sh --restart --focus ssh` on the USB target `<ADB_USB_SERIAL>`
+  - latest runtime revalidation on the workstation host confirmed the same trio restored by `adb_consolidate_desktop_mode.sh --restart --focus ssh` on the USB target `<ADB_USB_SERIAL>`
   - latest restored task bounds on the live tablet:
     - `Termux`: task `103` in `[32,96][1105,742]`
     - `Termux:X11`: task `104` in `[1129,96][2528,944]`
     - `Terminus`: task `105` in `[32,749][1105,1488]`
-  - latest validated final focus after freeform consolidation:
+  - latest validated final focus after desktop mode consolidation:
     - `com.server.auditor.ssh.client/.ssh.terminal.TerminalActivity`
   - latest post-reboot restored task bounds on the live tablet:
     - `Termux`: task `108` in `[32,96][1105,742]`
@@ -292,9 +296,7 @@ Do not treat this file as a historical changelog.
   - when desktop mode is inactive, `desktopmode dump` shows:
     - `inDesktopWindowing=false`
     - `activeDesk=null`
-  - in desktop mode, resizable apps open in `FREEFORM` automatically even without explicit `--windowingMode 5`
-  - deterministic host-side opening into a desktop window is also validated with:
-    - `adb shell cmd activity start-activity --display 0 --windowingMode 5 -W -n PKG/ACT`
+  - in desktop mode, resizable apps open as desktop windows and can be recovered into the active desk by the validated host helpers
   - validated window manipulation on this Samsung build:
     - `adb shell cmd activity task resize TASK_ID LEFT TOP RIGHT BOTTOM`
     - `adb shell wm shell desktopmode moveTaskOutOfDesk TASK_ID`
@@ -314,23 +316,23 @@ Do not treat this file as a historical changelog.
   - latest end-to-end validation of the helper:
     - `off` switched to tablet mode with launcher focus
     - `on` restored the active desk and the `Terminus` desktop window
-    - `open --package com.android.settings --bounds '150 120 1200 900'` opened `Configurações` as `FREEFORM`
+    - `open --package com.android.settings --bounds '150 120 1200 900'` opened `Configurações` as a desktop window
     - `resize --package com.android.settings --bounds '220 160 1280 980'` updated the real task bounds
     - `focus --package com.server.auditor.ssh.client` returned focus to `TerminalActivity` without relaunching a different screen of the app
   - current higher-level opening policy:
     - desktop mode is mandatory for host-side opening of visible Android apps
     - the policy name is `Foco grande`
-    - the launched app becomes the main window
-    - `Termux`, `Termux:X11` and the SSH client stay visible as compact auxiliaries
+    - `android_ssh`: the launched app becomes the main window and the trio stays visible as auxiliaries
+    - `local_workstation`: `Termux:X11` stays in the validated right-side slot, `Termux` shrinks only when needed, and the newest extra app takes the lower-left slot
     - the layout now measures the real usable desktop area from `StatusBar` + `TaskbarWindow` insets instead of assuming the raw `2560x1600` display
-    - on this Samsung build, several freeform windows clamp to an effective minimum size of about `646x646`; because of that, the helper no longer tries to stack three auxiliaries vertically when there is already one extra visible app
+    - on this Samsung build, several resizable desktop windows clamp to an effective minimum size of about `646x646`; because of that, the workstation layout now preserves `Termux:X11` in the right-side slot and uses the left/bottom slots for extra apps
     - with 1 extra app visible, the validated arrangement is:
-      - `Termux:X11` top-left
-      - `Termux` bottom-left
-      - launched app large on the top-right
-      - SSH bottom-right-left
-      - extra visible app bottom-right-right
-    - this keeps all 5 allowed desktop tasks visible and inside the usable area above the taskbar
+      - in `local_workstation`:
+        - `Termux` `[32,96][1105,742]`
+        - newest extra app `[32,749][1105,1488]`
+        - `Termux:X11` `[1129,96][2528,944]`
+      - in `android_ssh`, keep the validated multi-window layout with SSH visible
+    - this keeps the visible tasks inside the usable area above the taskbar without overlap
     - default final focus is now contextual:
       - on the workstation, the launched app keeps focus by default
       - when Codex is running over SSH from the tablet (`Terminus`), the app still opens large, but focus returns to the SSH client by default so the operator keeps control
@@ -340,11 +342,30 @@ Do not treat this file as a historical changelog.
       - primary app `[892,96][2528,806]`
       - SSH `[892,842][1702,1488]`
       - extra app `[1718,842][2528,1488]`
-    - later workstation-side retesting after a cold reboot also revalidated the distinction between the two modes:
-      - outside desktop mode, `Termux`, `Terminus` and `Termux:X11` can all be opened in freeform with `start-activity --windowingMode 5`
-      - however, the layout becomes unstable as soon as `cmd activity task resize` is applied to `Termux` or `Terminus`: on this Samsung build those tasks jump to fullscreen (`[0,0][2560,1600]`) even though they were initially valid freeform windows
-      - `Termux:X11` is visually more disruptive outside desktop mode because it opens large and dark, but it was not the primary trigger of the collapse in that retest
-      - decision preserved: ignore popup/freeform outside desktop mode for automation purposes and keep Samsung desktop mode as the only canonical managed path
+    - a later USB revalidation of the refactored helpers confirmed both contextual variants after the rename:
+      - explicit trio mode with `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart --with-ssh --focus ssh`
+      - workstation mode with `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart`
+      - workstation app layout with `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_open_desktop_app.sh --package com.android.settings --focus termux`
+      - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_workspace_regression.sh --suite desktop-layout`
+      - `bash ~/Documentos/AI/TermuxAiLocal/workspace_host_menu.sh --run desktop_mode_consolidate --yes`
+    - latest validated workstation bounds after that refactor:
+      - `Termux` `[32,96][1105,742]`
+      - primary app `[32,749][1105,1488]`
+      - `Termux:X11` `[1129,96][2528,944]`
+    - latest validated workstation bounds with a second extra app already visible:
+      - `Termux` `[32,96][1105,742]`
+      - newest extra app `[32,749][1105,1488]`
+      - `Termux:X11` `[1129,96][2528,806]`
+      - older extra app `[1129,842][2528,1488]`
+    - final March 21 workstation validation after the overlap fix passed with:
+      - one extra app visible: screenshot `android-layout-one-extra-final.png`, no overlap
+      - two extra apps visible: screenshot `android-layout-two-extra-final.png`, no overlap
+      - final clean workstation save point restored to screenshot `android-workstation-clean-final.png`
+    - latest validated workstation clean save point after the same round:
+      - `Termux` `[32,96][1105,1488]`
+      - `Termux:X11` `[1129,96][2528,944]`
+      - no visible extra app and no visible SSH client
+    - decision preserved: ignore non-desktop windowing paths for automation purposes and keep Samsung desktop mode as the only canonical managed path
     - after that validation, the requested save point for the next continuation is: workstation Linux host, preferred transport `USB`
   - latest direct USB revalidation on `<ADB_USB_SERIAL>` confirmed:
     - `status -> off -> on -> status` passed
@@ -354,6 +375,9 @@ Do not treat this file as a historical changelog.
   - a later cold-reboot revalidation on the same tablet session confirmed the same session-dependent behavior:
     - after reboot, the active desk changed again to `7`
     - the helper still converged correctly because it resolves the live desk id instead of relying on any fixed number
+  - later workstation cleanup revalidation also showed one firmware quirk:
+    - after `am force-stop` on extra non-core apps, `wm shell desktopmode dump` may keep stale metadata for old task ids even when `cmd activity stack list` and the screenshot already show only the restored workspace
+    - the refactored helpers now rely on the presence of the required task id in the active desk, not on the complete absence of every old task id from the dump
 - Current validated ADB Wi‑Fi recovery state:
   - when USB is absent, the host now tries Wi‑Fi recovery automatically before failing
   - current automatic recovery order:
@@ -408,8 +432,8 @@ Do not treat this file as a historical changelog.
   - scope note:
     - `adb_wifi_enabled` control is a validated device-specific path on this Samsung build, not an officially documented Android API guarantee
 - Important scope boundary:
-  - `adb_reset_termux_stack.sh` now rebuilds the validated desktop mode/freeform arrangement directly and no longer treats Android split layout as the canonical path
-  - use the freeform helper as the canonical way to reapply or rebuild the approved Android desktop layout
+  - `adb_reset_termux_stack.sh` now rebuilds the validated desktop mode arrangement directly and no longer treats Android split layout as the canonical path
+  - use the desktop mode helper as the canonical way to reapply or rebuild the approved Android desktop layout
 
 ## Current LM Studio State
 - LM Studio UI is installed from `LM-Studio-0.4.6-1-x64.AppImage`.
@@ -505,11 +529,11 @@ Important:
   - a freshly reinstalled app shell not yet ready for `run-as+spool`
   - orphaned Termux/X11/proot GUI processes that only disappear after a device reboot
 - The current live runtime after the telemetry refactor still validates:
-  - `adb_reset_termux_stack.sh` rebuilt the freeform desktop layout successfully
+  - `adb_reset_termux_stack.sh` rebuilt the desktop mode layout successfully
   - `adb_start_desktop.sh` showed `[HOST]` / `[HOST:OK]` on the host and preserved the expected Termux-side output
   - `adb_set_x11_resolution.sh` correctly switched between `balanced` (`1920x1080`) and `performance` (`1280x720`)
   - `adb_run_x11_command.sh` successfully launched a lightweight `aterm` in X11 with the new progress output
-  - `adb_consolidate_freeform_desktop.sh --restart` restored the contextual desktop layout expected by the current operator context
+  - `adb_consolidate_desktop_mode.sh --restart` restored the contextual desktop layout expected by the current operator context
 - Current Debian GUI state on the live tablet:
   - `run-gui-debian` and `login-debian-gui` are present again in `~/bin`
   - the host-side Debian reinstall/reapply flow passed on the current clean Termux base

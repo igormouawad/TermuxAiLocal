@@ -11,7 +11,6 @@ source "${WORKSPACE_ROOT}/lib/android_desktop_layout.sh"
 
 DEVICE_ID=''
 DISPLAY_ID=0
-WINDOWING_MODE=5
 PACKAGE_NAME=''
 COMPONENT_NAME=''
 SSH_PACKAGE='com.server.auditor.ssh.client'
@@ -30,20 +29,20 @@ SAFE_INNER_MARGIN_LEFT=32
 SAFE_INNER_MARGIN_TOP=24
 SAFE_INNER_MARGIN_RIGHT=32
 SAFE_INNER_MARGIN_BOTTOM=10
-BASE_NOEXTRA_X11_BOUNDS='1097 0 2496 848'
-BASE_NOEXTRA_TERMUX_BOUNDS='0 0 1073 646'
-BASE_NOEXTRA_SSH_BOUNDS='0 653 1073 1392'
-BASE_NOEXTRA_PRIMARY_BOUNDS='860 0 2496 1392'
+BASE_NOEXTRA_X11_BOUNDS='0 0 828 710'
+BASE_NOEXTRA_TERMUX_BOUNDS='0 746 828 1392'
+BASE_NOEXTRA_SSH_BOUNDS='860 746 2496 1392'
+BASE_NOEXTRA_PRIMARY_BOUNDS='860 0 2496 710'
 BASE_EXTRA_X11_BOUNDS='0 0 828 710'
 BASE_EXTRA_TERMUX_BOUNDS='0 746 828 1392'
 BASE_EXTRA_PRIMARY_BOUNDS='860 0 2496 710'
 BASE_EXTRA_SSH_BOUNDS='860 746 1670 1392'
 BASE_EXTRA_SECONDARY_BOUNDS='1686 746 2496 1392'
-BASE_WORKSTATION_NOEXTRA_X11_BOUNDS='952 746 2496 1392'
-BASE_WORKSTATION_EXTRA_TERMUX_BOUNDS='0 0 920 1392'
-BASE_WORKSTATION_EXTRA_PRIMARY_BOUNDS='952 0 2496 710'
-BASE_WORKSTATION_EXTRA_X11_BOUNDS='952 746 1760 1392'
-BASE_WORKSTATION_EXTRA_SECONDARY_BOUNDS='1776 746 2496 1392'
+BASE_WORKSTATION_FIXED_X11_BOUNDS='1097 0 2496 848'
+BASE_WORKSTATION_REDUCED_TERMUX_BOUNDS='0 0 1073 646'
+BASE_WORKSTATION_PRIMARY_BOUNDS='0 653 1073 1392'
+BASE_WORKSTATION_MULTIAPP_X11_BOUNDS='1097 0 2496 710'
+BASE_WORKSTATION_SECONDARY_BOUNDS='1097 746 2496 1392'
 
 TARGET_PACKAGE=''
 TARGET_COMPONENT=''
@@ -353,7 +352,7 @@ ensure_core_workspace() {
       ;;
   esac
 
-  run_workspace_helper "ADB/adb_consolidate_freeform_desktop.sh" "${helper_args[@]}" >/dev/null
+  run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" "${helper_args[@]}" >/dev/null
 }
 
 refresh_core_tasks() {
@@ -452,15 +451,15 @@ compute_scaled_layout() {
     fi
   else
     SSH_BOUNDS=''
-    TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-    PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    TERMUX_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_REDUCED_TERMUX_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+    PRIMARY_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_PRIMARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
 
     if [ "${#SECONDARY_TASK_IDS[@]}" -eq 0 ]; then
-      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_NOEXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_FIXED_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
       SECONDARY_AREA_BOUNDS=''
     else
-      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
-      SECONDARY_AREA_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_EXTRA_SECONDARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      X11_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_MULTIAPP_X11_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
+      SECONDARY_AREA_BOUNDS="$(desktop::scale_bounds "$BASE_WORKSTATION_SECONDARY_BOUNDS" "$BASE_LAYOUT_WIDTH" "$BASE_LAYOUT_HEIGHT" "$display_left" "$display_top" "$display_width" "$display_height")"
     fi
   fi
 }
@@ -542,11 +541,11 @@ ensure_task_on_desktop() {
   local task_id="$1"
   local label="$2"
 
-  if ! desktop::move_task_to_desk "$DEVICE_ID" "$task_id" "$DESK_ID"; then
+  if ! desktop::ensure_task_in_active_desk "$DEVICE_ID" "$task_id" "$DESK_ID"; then
     fail \
       "desktopmode moveTaskToDesk $task_id $DESK_ID" \
-      "$(adb -s "$DEVICE_ID" shell cmd activity stack list 2>/dev/null | tr -d '\r')" \
-      "A task $label nao entrou em FREEFORM no desktop mode." \
+      "$(adb -s "$DEVICE_ID" shell wm shell desktopmode dump 2>/dev/null | tr -d '\r')" \
+      "A task $label nao ficou visivel no desk ativo do desktop mode." \
       'Confirmar que o desktop mode segue ativo e repetir a operacao.'
   fi
 }
@@ -619,12 +618,7 @@ wait_for_focused_task() {
 }
 
 open_target_app() {
-  run_adb shell cmd activity start-activity \
-    --display "$DISPLAY_ID" \
-    --windowingMode "$WINDOWING_MODE" \
-    -W \
-    -n "$TARGET_COMPONENT" \
-    >/dev/null
+  desktop::start_desktop_activity "$DEVICE_ID" "$DISPLAY_ID" "$TARGET_COMPONENT"
 
   TARGET_TASK_ID="$(termux::wait_for_activity_task_id "$DEVICE_ID" "$TARGET_COMPONENT" 10 0.25 || true)"
   [ -n "$TARGET_TASK_ID" ] || fail \
@@ -707,9 +701,9 @@ apply_focus_large_layout() {
 if core_focus="$(core_focus_target 2>/dev/null)"; then
   step_begin "App alvo faz parte do trio base; reaplicando o layout canônico com foco em ${core_focus}"
   if [ "$WITH_OPENBOX" -eq 1 ]; then
-    run_workspace_helper "ADB/adb_consolidate_freeform_desktop.sh" --focus "$core_focus" >/dev/null
+    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --focus "$core_focus" >/dev/null
   else
-    run_workspace_helper "ADB/adb_consolidate_freeform_desktop.sh" --no-openbox --focus "$core_focus" >/dev/null
+    run_workspace_helper "ADB/adb_consolidate_desktop_mode.sh" --no-openbox --focus "$core_focus" >/dev/null
   fi
   step_ok "Layout canônico reaplicado com foco em ${core_focus}."
   exit 0
@@ -723,7 +717,7 @@ step_begin "$(
   if [ "$REFLOW_ONLY" -eq 1 ]; then
     printf '%s' 'Resolvendo o app visível que deve permanecer como janela principal'
   else
-    printf 'Abrindo %s como janela principal em FREEFORM' "$TARGET_PACKAGE"
+    printf 'Abrindo %s como janela principal no desktop mode' "$TARGET_PACKAGE"
   fi
 )"
 DESK_ID="$(desktop::active_desk_id "$DEVICE_ID" || true)"

@@ -273,15 +273,15 @@ validate_sudo_mode "$PROOT_SUDO_MODE"
 write_user_config_local
 step_ok "Configuração Debian coletada para o usuário ${PROOT_USER}."
 
-step_begin 'Reconstruindo o desktop livre do workspace antes da instalação Debian'
+step_begin 'Reconstruindo o desktop mode do workspace antes da instalação Debian'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \
     'preparação validada do ecossistema Termux' \
     "$(termux::current_focus "$DEVICE_ID")" \
-    'O host não conseguiu garantir o desktop mode livre obrigatório antes da instalação Debian.' \
-    'Reconstruir o desktop livre aprovado e repetir a operação.'
+    'O host não conseguiu garantir o desktop mode obrigatório antes da instalação Debian.' \
+    'Reconstruir o desktop mode aprovado e repetir a operação.'
 fi
-step_ok 'Desktop livre pronto para o payload Debian.'
+step_ok 'Desktop mode pronto para o payload Debian.'
 termux::audit_launch_device_watch "$DEVICE_ID"
 
 step_begin 'Enviando a configuração segura do usuário para o dispositivo'
