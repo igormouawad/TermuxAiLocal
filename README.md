@@ -21,6 +21,7 @@ O projeto organiza um fluxo verificavel para provisionar, reinstalar, validar e 
 - `Install/`: provisionamento, bootstrap e reinstalacao limpa
 - `Debian/`: instalacao e launchers do Debian GUI em `proot`
 - `lib/`: helpers compartilhados entre os scripts
+- `core/`, `context/`, `adapters/`, `scenarios/`, `orchestration/`: camada enterprise para detecção de cenário, preflight, policy gating e auditoria pré-mudança
 - `Workspace-Handoff.md`: estado validado atual e comandos canonicos
 - `README_ADB.md`: documentacao operacional detalhada
 
@@ -57,6 +58,14 @@ Reinstalacao limpa canonica:
 bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 ```
 
+Inspecao enterprise de contexto:
+
+```bash
+python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py detect-scenario --format json
+python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py preflight --format json
+python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py prechange-audit --operation desktop_mode_consolidate --action-class desktop_layout_apply --format text
+```
+
 ## Principios do workspace
 
 - ADB orquestra; Termux executa
@@ -70,6 +79,9 @@ bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh
 
 - `README_ADB.md`
 - `Audit/README.md`
+- `docs/Enterprise-Architecture.md`
+- `docs/Prechange-Audit-Runbook.md`
+- `docs/Scenario-Decision-Matrix.md`
 - `Workspace-Handoff.md`
 - `Termux-Android-Best-Practices.md`
 - `Local-Model-Execution-Guide.md`

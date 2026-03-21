@@ -357,6 +357,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Validação baseline do stack Termux' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Validação baseline do stack Termux' 'baseline_validation' "$DEVICE_ID"
 
 write_report "device_id=${DEVICE_ID}"
 step_begin 'Coletando metadados do device e auditando os apps Android obrigatórios'

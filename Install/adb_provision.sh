@@ -66,6 +66,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Provisionamento host-side do stack Termux' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Provisionamento host-side do stack Termux' 'termux_provision' "$DEVICE_ID"
 
 step_begin 'Auditando pré-requisitos Android e arquivos locais do payload'
 if [ ! -f "$PAYLOAD_SOURCE" ]; then

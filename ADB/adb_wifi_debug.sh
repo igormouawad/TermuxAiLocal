@@ -11,6 +11,17 @@ source "${WORKSPACE_ROOT}/lib/termux_common.sh"
 ACTION="status"
 USB_DEVICE_ID=""
 TCPIP_PORT="5555"
+AUDIT_OWNER=0
+
+finish_audit() {
+  local exit_code=$?
+
+  if [ "$AUDIT_OWNER" -eq 1 ]; then
+    termux::audit_session_finish "$exit_code"
+  fi
+}
+
+trap finish_audit EXIT
 
 usage() {
   cat <<EOF
@@ -320,6 +331,18 @@ enable_tcpip_mode() {
 }
 
 main() {
+  USB_DEVICE_ID="$(resolve_usb_device)"
+  termux::audit_session_begin 'Controle do ADB por Wi‑Fi via USB' "$0" "$USB_DEVICE_ID"
+  AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+
+  case "$ACTION" in
+    status)
+      ;;
+    *)
+      termux::prechange_audit_gate 'Controle do ADB por Wi‑Fi via USB' 'wifi_control_usb' "$USB_DEVICE_ID"
+      ;;
+  esac
+
   case "$ACTION" in
     status)
       show_status

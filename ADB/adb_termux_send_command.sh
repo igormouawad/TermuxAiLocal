@@ -66,6 +66,30 @@ run_adb() {
     "$@"
 }
 
+run_adb_internal() {
+  local output
+  local status
+  local timeout_seconds="${TERMUX_ADB_TIMEOUT_SECONDS:-0}"
+  local command_text
+
+  command_text="adb -s \"$DEVICE_ID\" $*"
+
+  if ! output=$(termux::run_with_timeout "$timeout_seconds" adb -s "$DEVICE_ID" "$@" 2>&1); then
+    status=$?
+    if [ "$status" -eq 124 ]; then
+      output="Comando ADB excedeu ${timeout_seconds}s.
+${output}"
+    fi
+    termux::fail \
+      "$command_text" \
+      "$output" \
+      'A automação interna do bridge do Termux foi interrompida.' \
+      'Corrigir a conectividade ADB ou o erro retornado e executar novamente.'
+  fi
+
+  printf '%s\n' "$output"
+}
+
 output_matches_expectation() {
   local output_text="$1"
   local expected_text
@@ -95,8 +119,8 @@ tail_text_lines() {
 }
 
 dump_termux_ui() {
-  run_adb shell uiautomator dump "$TERMUX_UI_REMOTE" >/dev/null
-  run_adb shell cat "$TERMUX_UI_REMOTE" > "$TERMUX_UI_LOCAL"
+  run_adb_internal shell uiautomator dump "$TERMUX_UI_REMOTE" >/dev/null
+  run_adb_internal shell cat "$TERMUX_UI_REMOTE" > "$TERMUX_UI_LOCAL"
 }
 
 wait_for_termux_text() {
@@ -136,8 +160,8 @@ ensure_termux_focus() {
       return 0
     fi
 
-    run_adb shell am start -n com.termux/.app.TermuxActivity >/dev/null
-    run_adb shell input tap 400 500 >/dev/null
+    run_adb_internal shell am start -n com.termux/.app.TermuxActivity >/dev/null
+    run_adb_internal shell input tap 400 500 >/dev/null
     sleep 0.3
     attempts=$((attempts + 1))
   done
@@ -156,7 +180,7 @@ send_text_chunk() {
     return 0
   fi
 
-  run_adb shell input text "$chunk" >/dev/null
+  run_adb_internal shell input text "$chunk" >/dev/null
 }
 
 send_command_text_via_ui() {
@@ -171,12 +195,12 @@ send_command_text_via_ui() {
       ' ')
         send_text_chunk "$chunk"
         chunk=""
-        run_adb shell input keyevent 62 >/dev/null
+        run_adb_internal shell input keyevent 62 >/dev/null
         ;;
       '/')
         send_text_chunk "$chunk"
         chunk=""
-        run_adb shell input keyevent 76 >/dev/null
+        run_adb_internal shell input keyevent 76 >/dev/null
         ;;
       *)
         chunk+="$char"
@@ -194,7 +218,7 @@ run_as_supported() {
 run_as_exec_out() {
   local remote_command="$1"
 
-  run_adb exec-out run-as com.termux /system/bin/sh -c "$remote_command"
+  run_adb_internal exec-out run-as com.termux /system/bin/sh -c "$remote_command"
 }
 
 build_run_as_start_command() {
@@ -748,7 +772,7 @@ run_command_via_interactive_shell() {
   send_command_text_via_ui "$prepared_launcher"
 
   if [ "$PRESS_ENTER" -eq 1 ]; then
-    run_adb shell input keyevent 66 >/dev/null
+    run_adb_internal shell input keyevent 66 >/dev/null
   fi
 
   started_at="$(date +%s)"
@@ -930,7 +954,7 @@ run_command_via_ui() {
   send_command_text_via_ui "$COMMAND_TEXT"
 
   if [ "$PRESS_ENTER" -eq 1 ]; then
-    run_adb shell input keyevent 66 >/dev/null
+    run_adb_internal shell input keyevent 66 >/dev/null
   fi
 
   if [ "${#EXPECT_TEXTS[@]}" -gt 0 ] && [ "$TIMEOUT_SECONDS" -gt 0 ]; then

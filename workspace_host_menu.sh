@@ -259,11 +259,50 @@ handler_patch_apply() {
   run_workspace_script "Install/apply_continue_extension_patch.sh"
 }
 
+handler_detect_scenario() {
+  python3 "${WORKSPACE_ROOT}/orchestration/cli.py" detect-scenario --format text
+}
+
+handler_preflight() {
+  python3 "${WORKSPACE_ROOT}/orchestration/cli.py" preflight --format text
+}
+
+handler_prechange_audit_summary() {
+  python3 "${WORKSPACE_ROOT}/orchestration/cli.py" prechange-audit --operation "menu_prechange_audit" --action-class inspect_state --format text
+}
+
 handler_deploy_termux_menu() {
   deploy_termux_menu_to_device
 }
 
 register_actions() {
+  add_action \
+    "scenario_detect" \
+    "Enterprise / Contexto" \
+    "Detectar o cenário operacional atual" \
+    "python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py detect-scenario --format text" \
+    "handler_detect_scenario" \
+    "0" \
+    "Classifica o cenário em Linux+USB, Android+Wi‑Fi ou UNKNOWN_OR_UNSAFE."
+
+  add_action \
+    "scenario_preflight" \
+    "Enterprise / Contexto" \
+    "Executar preflight estruturado" \
+    "python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py preflight --format text" \
+    "handler_preflight" \
+    "0" \
+    "Lê apps críticos, desktop mode, focus e capacidades antes de mutações."
+
+  add_action \
+    "prechange_audit" \
+    "Enterprise / Contexto" \
+    "Gerar auditoria pré-mudança sob demanda" \
+    "python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py prechange-audit --operation menu_prechange_audit --action-class inspect_state --format text" \
+    "handler_prechange_audit_summary" \
+    "0" \
+    "Gera o relatório enterprise base sem executar mutações."
+
   add_action \
     "smoke_openbox" \
     "Fluxos canonicos" \
@@ -683,10 +722,15 @@ run_action_index() {
   local handler="${ACTION_HANDLERS[$index]}"
   local status=0
   local audit_owner=0
+  local action_class=""
 
   termux::audit_session_begin "Menu host: ${ACTION_IDS[$index]}" "$0"
   audit_owner="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
   termux::audit_note 'HOST' "Executando ação ${ACTION_IDS[$index]}: ${ACTION_LABELS[$index]}"
+  action_class="$(action_class_for_id "${ACTION_IDS[$index]}")"
+  if [ -n "$action_class" ]; then
+    termux::prechange_audit_gate "menu:${ACTION_IDS[$index]}" "$action_class"
+  fi
 
   set +e
   "$handler"
@@ -698,6 +742,65 @@ run_action_index() {
   fi
 
   return "$status"
+}
+
+action_class_for_id() {
+  case "$1" in
+    scenario_detect|scenario_preflight|prechange_audit|desktop_mode_status|stack_status|resolution_show|continue_patch_check)
+      printf '%s\n' 'inspect_state'
+      ;;
+    smoke_openbox|daily_flow|regression_smoke|regression_full|validate_openbox|validate_xfce|desktop_layout_regression)
+      printf '%s\n' 'baseline_validation'
+      ;;
+    reset_termux|reset_x11)
+      printf '%s\n' 'stack_reset'
+      ;;
+    start_openbox|start_xfce)
+      printf '%s\n' 'desktop_stack_start'
+      ;;
+    desktop_mode_consolidate)
+      printf '%s\n' 'desktop_layout_apply'
+      ;;
+    desktop_mode_restart)
+      printf '%s\n' 'desktop_layout_restart'
+      ;;
+    desktop_open_settings|x11_demo|debian_xeyes)
+      printf '%s\n' 'desktop_app_launch'
+      ;;
+    desktop_mode_on|desktop_mode_off)
+      printf '%s\n' 'desktop_mode_control'
+      ;;
+    adb_wifi_connect|adb_wifi_disable|adb_wifi_tcpip)
+      printf '%s\n' 'wifi_control_usb'
+      ;;
+    adb_wifi_status)
+      printf '%s\n' 'inspect_state'
+      ;;
+    resolution_balanced|resolution_performance)
+      printf '%s\n' 'x11_resolution_change'
+      ;;
+    phantom_processes|provision_termux)
+      printf '%s\n' 'termux_provision'
+      ;;
+    reinstall_termux)
+      printf '%s\n' 'termux_reinstall'
+      ;;
+    debian_provision)
+      printf '%s\n' 'debian_provision'
+      ;;
+    debian_install)
+      printf '%s\n' 'debian_install'
+      ;;
+    continue_patch_apply)
+      printf '%s\n' 'continue_patch_apply'
+      ;;
+    deploy_termux_menu)
+      printf '%s\n' 'termux_provision'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 interactive_menu() {

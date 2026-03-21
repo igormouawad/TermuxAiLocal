@@ -112,6 +112,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Execução de comando X11 via host wrapper' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Execução de comando X11 via host wrapper' 'x11_runtime_launch' "$DEVICE_ID"
 step_begin 'Preparando desktop mode livre e verificando a janela do Termux:X11'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then
   fail \

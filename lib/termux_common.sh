@@ -432,6 +432,7 @@ export PREFIX="/data/data/com.termux/files/usr"
 export TMPDIR="\${TMPDIR:-/data/data/com.termux/files/usr/tmp}"
 export PATH="\${HOME}/bin:\${PREFIX}/bin:/system/bin:/system/xbin"
 export LD_LIBRARY_PATH="\${PREFIX}/lib"
+export TERMUXAI_AUDIT_LAYOUT="\${TERMUXAI_AUDIT_LAYOUT:-compact}"
 exec "\${HOME}/bin/termux-audit-watch" ${TERMUXAI_AUDIT_DEVICE_DIR} --final-delay 8
 EOF
   adb -s "$device_id" push "${TERMUXAI_AUDIT_MANIFEST_FILE}" "$stage_path" >/dev/null 2>&1 || {
@@ -565,6 +566,101 @@ termux::audit_session_finish() {
   unset TERMUXAI_AUDIT_REPORT_TXT_FILE TERMUXAI_AUDIT_LABEL TERMUXAI_AUDIT_STEP_SEQ TERMUXAI_AUDIT_CURRENT_STEP_SEQ
   unset TERMUXAI_AUDIT_CURRENT_STEP_LOG TERMUXAI_AUDIT_DEVICE_ID TERMUXAI_AUDIT_DEVICE_DIR TERMUXAI_AUDIT_DEVICE_READY
   unset TERMUXAI_AUDIT_DEVICE_EVENTS_FILE TERMUXAI_AUDIT_DEVICE_MANIFEST_FILE
+}
+
+termux::orchestration_cli() {
+  python3 "${TERMUX_WORKSPACE_ROOT}/orchestration/cli.py" "$@"
+}
+
+termux::prechange_audit_gate() {
+  local operation="$1"
+  local action_class="$2"
+  local device_id="${3:-}"
+  local output
+  local status
+  local decision=""
+  local risk_level=""
+  local scenario=""
+  local report_md=""
+  local next_step=""
+  local line key value
+
+  case "${TERMUXAI_PRECHANGE_AUDIT:-1}" in
+    0|false|FALSE|no|NO)
+      return 0
+      ;;
+  esac
+
+  if [ "${TERMUXAI_AUDIT_SESSION_OWNER:-0}" -ne 1 ] 2>/dev/null; then
+    return 0
+  fi
+
+  if [ "${TERMUXAI_PRECHANGE_AUDIT_ACTIVE:-0}" -eq 1 ] 2>/dev/null; then
+    return 0
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    termux::progress_note 'HOST' 'python3 ausente; auditoria pré-mudança estruturada indisponível.'
+    return 0
+  fi
+
+  export TERMUXAI_PRECHANGE_AUDIT_ACTIVE=1
+  set +e
+  output="$(
+    termux::orchestration_cli \
+      prechange-audit \
+      --operation "$operation" \
+      --action-class "$action_class" \
+      --format shell 2>&1
+  )"
+  status=$?
+  set -e
+  unset TERMUXAI_PRECHANGE_AUDIT_ACTIVE
+
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    case "$key" in
+      DECISION)
+        decision="$value"
+        ;;
+      RISK_LEVEL)
+        risk_level="$value"
+        ;;
+      SCENARIO)
+        scenario="$value"
+        ;;
+      REPORT_MD)
+        report_md="$value"
+        ;;
+      NEXT_STEP)
+        next_step="$value"
+        ;;
+    esac
+  done <<<"$output"
+
+  if [ -n "$scenario" ]; then
+    termux::progress_note 'HOST' "Prechange audit: cenário=${scenario} risco=${risk_level:-desconhecido} decisão=${decision:-desconhecida}"
+  fi
+
+  if [ -n "$report_md" ]; then
+    termux::progress_note 'HOST' "Relatório pré-mudança: ${report_md}"
+  fi
+
+  if [ -n "$next_step" ]; then
+    termux::audit_note 'HOST' "Prechange audit ${operation}: ${next_step}"
+  fi
+
+  if [ "$status" -ne 0 ]; then
+    termux::fail \
+      "python3 ${TERMUX_WORKSPACE_ROOT}/orchestration/cli.py prechange-audit --operation $(printf '%q' "$operation") --action-class $(printf '%q' "$action_class")" \
+      "$output" \
+      'A política enterprise bloqueou a operação antes da mutação.' \
+      "${next_step:-Ler o relatório pré-mudança e escolher um caminho operacional seguro.}"
+  fi
+
+  return 0
 }
 
 termux::require_host_command() {

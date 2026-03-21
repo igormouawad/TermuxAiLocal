@@ -132,6 +132,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Reset do ecossistema Termux' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Reset do ecossistema Termux' 'stack_reset' "$DEVICE_ID"
 
 step_begin 'Encerrando apps Android e resíduos controlados do ecossistema Termux'
 kill_termux_side_processes

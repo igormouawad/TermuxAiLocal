@@ -266,6 +266,7 @@ termux::require_host_command \
 DEVICE_ID="$(termux::resolve_target_device)"
 termux::audit_session_begin 'Instalação síncrona do Debian GUI' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Instalação síncrona do Debian GUI' 'debian_install' "$DEVICE_ID"
 step_begin 'Coletando usuário Debian, senha e política de sudo no host'
 collect_user_setup_interactively
 validate_proot_user "$PROOT_USER"

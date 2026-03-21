@@ -51,6 +51,13 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Ajuste de resolução do Termux:X11' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+case "$PROFILE" in
+  show)
+    ;;
+  *)
+    termux::prechange_audit_gate 'Ajuste de resolução do Termux:X11' 'x11_resolution_change' "$DEVICE_ID"
+    ;;
+esac
 
 case "$PROFILE" in
   performance|balanced|native|show)

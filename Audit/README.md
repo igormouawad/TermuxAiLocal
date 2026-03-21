@@ -61,12 +61,26 @@ Quando há device ADB disponível, a mesma sessão é espelhada para:
 
 O watcher do Termux lê `manifest.json` + `events.jsonl` desse espelho e renderiza a UI.
 
+Layout responsivo do watcher:
+
+- no modo `watch`, o runner agora prefere a pilha vertical por padrão, porque esse é o caso dominante do `Termux` no slot esquerdo do desktop mode
+- para depuração manual, `TERMUXAI_AUDIT_LAYOUT=wide` ainda força o dashboard largo em duas colunas
+- em outros contextos, o runner ainda pode usar heurística de tamanho para decidir entre largo e compacto
+- nesse modo compacto, `Etapa atual`, `Pipeline`, `Atividade recente` e `Eventos` deixam de disputar largura horizontal e passam a ocupar a janela por blocos verticais
+- o objetivo é evitar truncamento agressivo e painéis quase ilegíveis quando o `Termux` não está maximizado
+- o launcher espelhado `termux-audit-watch-current` agora força `TERMUXAI_AUDIT_LAYOUT=compact`; para depuração manual, o runner aceita `TERMUXAI_AUDIT_LAYOUT=compact|wide|auto`
+
 Para o launch automático vindo do host:
 
 - cada sessão espelhada recebe um launcher curto e efêmero em `~/bin/termux-audit-watch-current`
 - isso evita digitar no Android um comando longo com o path completo do espelho
 - nos wrappers que reconstroem o desktop/Termux, o launcher é disparado só depois do `workspace ready`
 - o `watch` já aceita timestamps ISO com e sem timezone no mesmo espelho
+- editar `Audit/audit_runner.py` no host não atualiza automaticamente a cópia instalada no app `Termux`
+- para ativar uma nova versão do runner no tablet, use o fluxo canônico do workspace:
+  - staging em `/data/local/tmp`
+  - depois instalação real pelo payload `Install/install_termux_stack.sh`
+- o watcher agora filtra os payloads internos `__CODEX_TERMUX_META_*` do bridge síncrono para que `Atividade recente` e `Eventos` mostrem só a sessão real do operador
 
 ### 3. Sessões aninhadas
 

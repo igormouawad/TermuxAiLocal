@@ -158,6 +158,11 @@ termux::require_host_command \
 DEVICE_ID="$(termux::resolve_target_device)"
 termux::audit_session_begin 'Consolidação do desktop mode Samsung' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+if [ "$RESTART_APPS" -eq 1 ]; then
+  termux::prechange_audit_gate 'Consolidação do desktop mode Samsung' 'desktop_layout_restart' "$DEVICE_ID"
+else
+  termux::prechange_audit_gate 'Consolidação do desktop mode Samsung' 'desktop_layout_apply' "$DEVICE_ID"
+fi
 
 resolve_ssh_enabled() {
   case "$SSH_MODE" in

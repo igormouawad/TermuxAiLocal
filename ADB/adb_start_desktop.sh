@@ -199,6 +199,7 @@ termux::require_host_command \
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Subida do desktop Termux/X11' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Subida do desktop Termux/X11' 'desktop_stack_start' "$DEVICE_ID"
 
 step_begin 'Preparando o desktop mode livre e as janelas base do workspace'
 if ! termux::ensure_termux_workspace_ready "$DEVICE_ID" termux; then

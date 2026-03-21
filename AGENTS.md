@@ -71,59 +71,65 @@ Exceptions that override the generic reading order above:
 13. For execution, testing, validation, provisioning, recovery, or command-map tasks, do not read `Workspace-Study-Base.md` unless the user explicitly asked for research or external source analysis.
 14. For a short Continue Agent smoke test limited to the canonical `reset -> start -> validate` flow on an already-provisioned stack, the minimal read set is `Workspace-Handoff.md` and `Local-Model-Execution-Guide.md` after `AGENTS.md` is already applied by the UI; do not add `README_ADB.md` or `Termux-Android-Best-Practices.md` unless the task explicitly involves provisioning, reinstall, or architecture diagnosis.
 15. For reinstall, reprovision, bootstrap, mirror, or `como faço` command-map questions, do not answer from generic Android or generic Termux memory; anchor the answer in the validated workspace scripts and stop points.
-16. For a full clean reinstall request, the canonical host command is `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`.
-17. For that reinstall flow, `adb_reinstall_termux_official.sh` already opens `Termux:API`, launches the app `Termux`, waits for readiness, and runs `bash /data/local/tmp/install_termux_repo_bootstrap.sh` automatically.
-18. Wrong reinstall answer:
+16. For enterprise context, preflight, session-safety, or scenario-detection work, use the structured layer first:
+   - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py detect-scenario --format json`
+   - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py preflight --format json`
+   - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py prechange-audit --operation OP --action-class ACTION --format text`
+17. When a public wrapper is the parent session, the prechange audit is expected to run before mutation; do not bypass it unless `TERMUXAI_PRECHANGE_AUDIT=0` was intentionally set for debugging.
+18. In `SCENARIO_2_ANDROID_WIFI`, treat `desktop_mode_control`, `desktop_layout_restart`, `stack_reset`, `desktop_stack_start`, `baseline_validation`, `wifi_control_usb`, `termux_provision`, `termux_reinstall`, `debian_provision` and `debian_install` as unsafe for in-process execution unless the policy layer is deliberately changed and revalidated.
+19. For a full clean reinstall request, the canonical host command is `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`.
+20. For that reinstall flow, `adb_reinstall_termux_official.sh` already opens `Termux:API`, launches the app `Termux`, waits for readiness, and runs `bash /data/local/tmp/install_termux_repo_bootstrap.sh` automatically.
+21. Wrong reinstall answer:
    - uninstall manually
    - reinstall from Play Store or F-Droid
    - run `termux-change-repo`
    - run `pkg update && pkg upgrade`
    - run `proot-distro install debian`
-19. Right reinstall answer:
+22. Right reinstall answer:
    - `bash ~/Documentos/AI/TermuxAiLocal/Install/adb_reinstall_termux_official.sh`
-20. For a clean reinstall command-map answer, prefer exactly this single host command and nothing else. The helper already performs the post-install `Termux:API` open, the Termux readiness wait, and the automatic bootstrap inside the app Termux.
-21. For that clean reinstall command-map answer, do not read `Install/adb_reinstall_termux_official.sh`, `Install/install_termux_repo_bootstrap.sh`, or `Install/install_termux_stack.sh` if `Local-Model-Execution-Guide.md` already defines the validated flow.
-22. For that clean reinstall command-map answer, do not add “what the script does”, cleanup internals, mirror internals, or package lists. Return only the canonical one-liner.
-23. For a short Continue Agent command-map answer limited to the clean reinstall flow, the minimal read set is only `Local-Model-Execution-Guide.md` after `AGENTS.md` is already applied by the UI; do not add `Workspace-Handoff.md`, `README_ADB.md`, or `Termux-Android-Best-Practices.md` unless the user explicitly asks for reinstall internals or architecture diagnosis.
-24. For that same short Continue Agent clean reinstall command-map answer, do not call `read_file`, `file_glob_search`, terminal probes, or any other tool. Answer directly from `AGENTS.md` with only the canonical one-liner.
-25. For that same short Continue Agent clean reinstall command-map answer, if you start thinking about reading another file or calling a tool, stop and answer directly instead.
-26. Natural-language mapping matters: `fluxo diario limpo completo do workspace` means the canonical 7-step daily flow, not reinstall.
-27. For that natural full-flow request, do not invent shortcut wrappers or repo paths such as `Daily-Flow/clean-full-workspace-flow.sh`. Expand to the canonical 7 absolute commands instead.
-28. In Continue Agent, for that natural full-flow request, the first actions must be:
+23. For a clean reinstall command-map answer, prefer exactly this single host command and nothing else. The helper already performs the post-install `Termux:API` open, the Termux readiness wait, and the automatic bootstrap inside the app Termux.
+24. For that clean reinstall command-map answer, do not read `Install/adb_reinstall_termux_official.sh`, `Install/install_termux_repo_bootstrap.sh`, or `Install/install_termux_stack.sh` if `Local-Model-Execution-Guide.md` already defines the validated flow.
+25. For that clean reinstall command-map answer, do not add “what the script does”, cleanup internals, mirror internals, or package lists. Return only the canonical one-liner.
+26. For a short Continue Agent command-map answer limited to the clean reinstall flow, the minimal read set is only `Local-Model-Execution-Guide.md` after `AGENTS.md` is already applied by the UI; do not add `Workspace-Handoff.md`, `README_ADB.md`, or `Termux-Android-Best-Practices.md` unless the user explicitly asks for reinstall internals or architecture diagnosis.
+27. For that same short Continue Agent clean reinstall command-map answer, do not call `read_file`, `file_glob_search`, terminal probes, or any other tool. Answer directly from `AGENTS.md` with only the canonical one-liner.
+28. For that same short Continue Agent clean reinstall command-map answer, if you start thinking about reading another file or calling a tool, stop and answer directly instead.
+29. Natural-language mapping matters: `fluxo diario limpo completo do workspace` means the canonical 7-step daily flow, not reinstall.
+30. For that natural full-flow request, do not invent shortcut wrappers or repo paths such as `Daily-Flow/clean-full-workspace-flow.sh`. Expand to the canonical 7 absolute commands instead.
+31. In Continue Agent, for that natural full-flow request, the first actions must be:
    - `Continue read ~/Documentos/AI/TermuxAiLocal/Workspace-Handoff.md`
    - `Continue read ~/Documentos/AI/TermuxAiLocal/Local-Model-Execution-Guide.md`
    - then the first `Run` must be `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_reset_termux_stack.sh --focus termux`
-29. For that same natural full-flow request, do not start with `run_terminal_command`, `file_glob_search`, or any repo shortcut before those two reads.
-30. Natural-language mapping matters: `com o stack atual` or `apenas o necessario` means minimal repair from current state, not reinstall.
-31. Natural-language mapping matters: `reinstalacao limpa completa do Termux` means the one-step host reinstall flow, not the daily flow.
-32. For a natural minimal-repair request such as `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical sequence is:
+32. For that same natural full-flow request, do not start with `run_terminal_command`, `file_glob_search`, or any repo shortcut before those two reads.
+33. Natural-language mapping matters: `com o stack atual` or `apenas o necessario` means minimal repair from current state, not reinstall.
+34. Natural-language mapping matters: `reinstalacao limpa completa do Termux` means the one-step host reinstall flow, not the daily flow.
+35. For a natural minimal-repair request such as `com o stack atual, faca apenas o necessario para abrir um app X11 leve e depois xeyes no Debian`, the canonical sequence is:
    - first: `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh -- 'termux-stack-status --brief'`
    - if that probe already shows `DESKTOP=openbox`, do not reset and do not start again before the X11 step
    - if that probe shows `DESKTOP=inativo`, run only `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_start_desktop.sh --with-gpu --profile openbox-maxperf openbox`
    - then run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title TESTE-X11 -e sh -lc 'printf X11_OK; sleep 1'`
    - then run `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_termux_send_command.sh --expect 'XEyes enviado ao Debian com sucesso.' -- 'run-gui-debian --label XEyes -- xeyes'`
-33. Wrong minimal-repair pattern for this workspace:
+36. Wrong minimal-repair pattern for this workspace:
    - `ps -ef`
    - `which xeyes`
    - `sudo apt install`
    - host Linux package management
    - generic host X11 discovery such as searching for `Xorg`, `Xvfb`, or desktop processes
-34. Right minimal-repair pattern for this workspace:
+37. Right minimal-repair pattern for this workspace:
    - one targeted Termux stack probe
    - smallest Termux/X11 repair justified by that probe
    - then host wrapper for X11
    - then host wrapper for Debian GUI
-35. In Continue Agent, if a requested command step shows `FALHA DETECTADA` or `Command failed with exit code`, treat that step as failed immediately.
-36. If the user said to stop on failure, the first failed requested command is the last requested command you may execute from that ordered list in that run.
-37. Wrong pattern: step 1 fails with `FALHA DETECTADA` and you still execute `SHOULD-NOT-RUN`. Right pattern: step 1 fails with `FALHA DETECTADA`, you stop there and return only the failure outcome.
-38. Precedence rule: the stop-on-failure rule overrides every “continue with the next tool call” rule. If the immediately previous requested step already failed, the next assistant turn must not contain another tool call from that list.
-39. In Continue Agent, if the user uses a synthetic stop-on-failure probe where the raw shell command itself explicitly encodes failure, such as `exit 1`, `exit 7`, or `false`, treat that requested step as the intended failure boundary and do not execute later requested steps from that list even if the terminal transcript hides the exit code banner.
-40. Example of the rule above: if step 1 is `bash -lc "echo STEP1 >/tmp/continue-step1; exit 7"` and step 2 is `bash -lc "echo STEP2 >/tmp/continue-step2"`, run step 1 and stop. `STEP2` must not run.
-41. In that same synthetic case, empty terminal output is still not evidence of success. The literal command text already defines the step as a deliberate failure probe.
-42. If a requested step literally contains deliberate failure syntax such as `exit 1`, `exit 7`, or `false`, then after executing that step the ordered list is finished for stop-on-failure purposes. Do not emit another tool call from that list.
-43. The generic Continue rule “emit the next tool call after a successful step” does not apply to those synthetic failure probes. A step that literally contains `exit 1`, `exit 7`, or `false` is never a successful step for sequencing purposes, even when the terminal tool returns empty output.
-44. The local Continue patch is part of the validated behavior baseline. Do not assume it survives extension reinstall or update.
-45. If the task is to test, validate, or repair Continue behavior after a clean LM Studio / Continue reinstall, verify that patch first and apply it if missing before diagnosing the model.
+38. In Continue Agent, if a requested command step shows `FALHA DETECTADA` or `Command failed with exit code`, treat that step as failed immediately.
+39. If the user said to stop on failure, the first failed requested command is the last requested command you may execute from that ordered list in that run.
+40. Wrong pattern: step 1 fails with `FALHA DETECTADA` and you still execute `SHOULD-NOT-RUN`. Right pattern: step 1 fails with `FALHA DETECTADA`, you stop there and return only the failure outcome.
+41. Precedence rule: the stop-on-failure rule overrides every “continue with the next tool call” rule. If the immediately previous requested step already failed, the next assistant turn must not contain another tool call from that list.
+42. In Continue Agent, if the user uses a synthetic stop-on-failure probe where the raw shell command itself explicitly encodes failure, such as `exit 1`, `exit 7`, or `false`, treat that requested step as the intended failure boundary and do not execute later requested steps from that list even if the terminal transcript hides the exit code banner.
+43. Example of the rule above: if step 1 is `bash -lc "echo STEP1 >/tmp/continue-step1; exit 7"` and step 2 is `bash -lc "echo STEP2 >/tmp/continue-step2"`, run step 1 and stop. `STEP2` must not run.
+44. In that same synthetic case, empty terminal output is still not evidence of success. The literal command text already defines the step as a deliberate failure probe.
+45. If a requested step literally contains deliberate failure syntax such as `exit 1`, `exit 7`, or `false`, then after executing that step the ordered list is finished for stop-on-failure purposes. Do not emit another tool call from that list.
+46. The generic Continue rule “emit the next tool call after a successful step” does not apply to those synthetic failure probes. A step that literally contains `exit 1`, `exit 7`, or `false` is never a successful step for sequencing purposes, even when the terminal tool returns empty output.
+47. The local Continue patch is part of the validated behavior baseline. Do not assume it survives extension reinstall or update.
+48. If the task is to test, validate, or repair Continue behavior after a clean LM Studio / Continue reinstall, verify that patch first and apply it if missing before diagnosing the model.
 
 ## Source Priority For Research
 Use the priority model defined in [Workspace-Study-Base.md](~/Documentos/AI/TermuxAiLocal/Workspace-Study-Base.md):

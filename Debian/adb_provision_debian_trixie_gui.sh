@@ -91,6 +91,7 @@ bash "${PROJECT_ROOT}/ADB/adb_reset_termux_stack.sh" --focus termux >/dev/null
 DEVICE_ID=$(termux::resolve_target_device)
 termux::audit_session_begin 'Provisionamento host-side do Debian GUI' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Provisionamento host-side do Debian GUI' 'debian_provision' "$DEVICE_ID"
 step_ok 'Reset concluído e device resolvido para o provisionamento Debian.'
 
 step_begin 'Enviando os payloads Debian GUI para /data/local/tmp'

@@ -96,6 +96,7 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 
 ## Layout operacional
 
+- `core/`, `context/`, `adapters/`, `scenarios/`, `orchestration/`: camada enterprise para detecção de cenário, preflight, policy gating e auditoria pré-mudança.
 - `Audit/audit_runner.py`: runner visual canônico com modos `exec`, `watch` e `summarize`.
 - `Audit/profiles/`: perfis JSON de referência e smoke tests controlados.
 - `ADB/adb_reset_termux_stack.sh`: reset e preparação do ecossistema Termux.
@@ -112,6 +113,22 @@ Pacotes internos do Termux são instalados depois, já dentro do app Termux, pel
 - `ADB/adb_termux_send_command.sh`: helper host-side para execução síncrona no contexto do Termux, com `run-as` como caminho preferencial, retorno estruturado de `stdout`/`stderr`/`exit code` e fallback por UI apenas quando necessário.
 - `ADB/adb_wifi_debug.sh`: helper host-side para inspecionar, ligar, desligar e conectar o ADB por Wi‑Fi usando USB como transporte de controle.
 - Para helpers X11/GPU sensíveis, o mesmo wrapper agora suporta disparo no shell real do app Termux com polling estruturado por spool, evitando regressões causadas por namespace divergente do `run-as`.
+
+CLI enterprise nova:
+
+- detectar cenário:
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py detect-scenario --format json`
+- executar preflight:
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py preflight --format json`
+- auditar uma mutação antes da execução:
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py prechange-audit --operation desktop_mode_consolidate --action-class desktop_layout_apply --format text`
+
+Política de integração:
+
+- wrappers shell públicos continuam sendo os entrypoints operacionais
+- quando o wrapper é a sessão pai, ele executa automaticamente o `prechange-audit`
+- quando o wrapper está aninhado sob o menu host ou outra sessão pai, a auditoria não é duplicada
+- no cenário `SCENARIO_2_ANDROID_WIFI`, ações classificadas como `UNSAFE_FOR_IN_PROCESS_EXECUTION` são bloqueadas antes da mutação
 
 Fluxo único de regressão recomendado para manutenção:
 
@@ -173,6 +190,11 @@ Camada visual canônica:
   - `~/bin/termux-audit-watch-current`
 - wrappers que reestabilizam o desktop/Termux primeiro e só depois abrem a UI:
   - o watcher nasce depois do `workspace ready`, para não morrer junto com resets/reaberturas do próprio ecossistema Termux
+- editar `Audit/audit_runner.py` no host não atualiza automaticamente a cópia já instalada dentro do app `Termux`
+- para ativar uma nova versão do watcher no tablet, use o fluxo canônico do workspace:
+  - staging host-side para `/data/local/tmp`
+  - depois instalação real via `Install/install_termux_stack.sh` no app `Termux`
+- o bridge síncrono do helper `adb_termux_send_command.sh` não deve mais vazar blocos `__CODEX_TERMUX_META_*` para a sessão pai espelhada do watcher
 - o runner principal instalado no Termux também expõe:
   - `termux-audit-run`
   - `termux-audit-summarize`

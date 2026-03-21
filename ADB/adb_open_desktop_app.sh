@@ -245,6 +245,7 @@ esac
 DEVICE_ID="$(termux::resolve_target_device "$DEVICE_ID")"
 termux::audit_session_begin 'Abertura de app Android em desktop mode' "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate 'Abertura de app Android em desktop mode' 'desktop_app_launch' "$DEVICE_ID"
 
 resolve_ssh_enabled() {
   case "$SSH_MODE" in

@@ -11,6 +11,37 @@ Use it for:
 
 Do not treat this file as a historical changelog.
 
+## Current Enterprise Refactor State
+- A new enterprise layer now exists in:
+  - `core/`
+  - `context/`
+  - `adapters/`
+  - `scenarios/`
+  - `orchestration/`
+  - `docs/`
+- Public CLI:
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py detect-scenario --format json`
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py preflight --format json`
+  - `python3 ~/Documentos/AI/TermuxAiLocal/orchestration/cli.py prechange-audit --operation OP --action-class ACTION --format text`
+- Formal scenario classes:
+  - `SCENARIO_1_LINUX_USB`
+  - `SCENARIO_2_ANDROID_WIFI`
+  - `UNKNOWN_OR_UNSAFE`
+- Current validated live detection in this session:
+  - `SCENARIO_1_LINUX_USB`
+  - evidence:
+    - local Linux workstation context
+    - `adb devices -l` returned the Samsung tablet `<ADB_USB_SERIAL>` in `state=device` over USB
+- Public shell wrappers now call the structured `prechange-audit` automatically when they are the parent audit session.
+- Nested wrappers no longer duplicate the same audit gate under `workspace_host_menu.sh`.
+- Session safety is now executable policy:
+  - in `SCENARIO_2_ANDROID_WIFI`, destructive actions such as stack reset, desktop restart, baseline validation, reinstall/provision and Wi‑Fi control by USB are blocked before mutation
+  - in `UNKNOWN_OR_UNSAFE`, only pure inspection remains allowed
+- New docs:
+  - `docs/Enterprise-Architecture.md`
+  - `docs/Scenario-Decision-Matrix.md`
+  - `docs/Prechange-Audit-Runbook.md`
+
 ## Current Script Audit State
 - Current regression-runner state:
   - the workspace now has a single host-side regression wrapper:
@@ -189,6 +220,9 @@ Do not treat this file as a historical changelog.
       - `termux-audit-run`
       - `termux-audit-watch`
       - `termux-audit-summarize`
+    - important deployment contract:
+      - editing `Audit/audit_runner.py` in the repo does not update the copy currently executed by the app `Termux`
+      - to activate a new watcher build on the tablet, first stage the payloads with `Install/adb_provision.sh` or `Install/adb_reinstall_termux_official.sh`, then install them inside the real app `Termux` with the canonical payload flow
   - local validation already passed for the new subsystem:
     - `python3 -m py_compile Audit/audit_runner.py`
     - `bash -n`
@@ -207,6 +241,11 @@ Do not treat this file as a historical changelog.
       - `ADB/adb_run_x11_command.sh`
       - `ADB/adb_start_desktop.sh`
       - `ADB/adb_set_x11_resolution.sh`
+  - current watcher UI layout state:
+    - `Audit/audit_runner.py` now treats `watch` mode as compact by default and only uses the old wide dashboard when `TERMUXAI_AUDIT_LAYOUT=wide`
+    - this change specifically targets the validated workstation layout where the `Termux` window lives in the left slot and had insufficient width for the old horizontal dashboard
+    - the compact mode keeps the same information, but renders `Etapa atual`, `Pipeline`, `Atividade recente` and `Eventos` one below the other so the content remains legible without maximizing `Termux`
+    - the host-generated launcher `termux-audit-watch-current` now exports `TERMUXAI_AUDIT_LAYOUT=compact` so the mirrored watcher in the app `Termux` prefers the compact stack even when terminal-size detection is ambiguous under the alternate screen
       - `ADB/adb_reset_termux_stack.sh`
       - `ADB/adb_validate_baseline.sh`
       - `Install/adb_provision.sh`
@@ -216,8 +255,16 @@ Do not treat this file as a historical changelog.
     - integrated host-wrapper validation with the watcher visible in the app Termux for:
       - `ADB/adb_run_x11_command.sh`
       - `ADB/adb_validate_baseline.sh`
+    - current watcher filtering state:
+      - internal polling traffic from `ADB/adb_termux_send_command.sh` no longer pollutes the mirrored parent session with `__CODEX_TERMUX_META_*`
+      - the watcher also filters those bridge meta payloads defensively if a future flow emits them again
+    - latest validated clean watcher sessions:
+      - `Audit/runs/mirror-20260321-125157-240267`
+      - `Audit/runs/mirror-20260321-125650-247729`
+      - both finished with `health=PASS`, `exit_code=0`, no `failure`, and no `__CODEX_TERMUX_META_*` lines in `events.jsonl`
   - current known limitation:
     - very long validations may still outlive the host PTY capture used by Codex itself; when that happens, trust `Audit/runs/<session-id>/events.jsonl`, `summary.json`, the generated report directory, and the on-device watcher state instead of the truncated PTY transcript
+    - after a short wrapper ends, the mirrored watcher still exits after its configured final delay; that is expected behavior, not a crash
 
 ## Workspace Identity
 - Root: `~/Documentos/AI/TermuxAiLocal`
@@ -269,6 +316,16 @@ Do not treat this file as a historical changelog.
   - latest direct validation of that rule on the live tablet passed:
     - before reboot, launcher focus was restored, `inDesktopWindowing=false`, and no visible tasks remained for `Termux`, `Termux:X11`, or `Terminus`
     - after reboot, the tablet returned to launcher focus with `inDesktopWindowing=false` and still no visible tasks for that trio
+  - latest post-reboot watcher validation in the same USB workstation scenario passed with this exact sequence:
+    - `termux::prepare_android_reboot_state`
+    - `adb reboot`
+    - wait for `device` plus `boot_completed`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_consolidate_desktop_mode.sh --restart`
+    - `bash ~/Documentos/AI/TermuxAiLocal/ADB/adb_run_x11_command.sh aterm -title AUDIT-REBOOT -e sh -lc 'printf AUDIT_REBOOT; sleep 20'`
+  - screenshot evidence for that post-reboot watcher validation:
+    - `/tmp/audit-reboot-shot-1.png`
+  - resulting clean session for that post-reboot watcher validation:
+    - `Audit/runs/mirror-20260321-125650-247729`
 - Current validated Android desktop-state continuity:
   - the live Android desktop arrangement remains the approved trio: `Termux` top-left, `Terminus` bottom-left, `Termux:X11` on the right
   - `Termux:API` must stay off the visible desktop and be treated as background-only outside clean reinstall/bootstrap flows

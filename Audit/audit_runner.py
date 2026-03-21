@@ -30,6 +30,10 @@ DEFAULT_LOG_DIR = "./Audit/runs"
 DEFAULT_KILL_GRACE_SECONDS = 3.0
 DEFAULT_REPORT_WIDTH = 140
 DEFAULT_FINAL_DELAY_SECONDS = 3.0
+COMPACT_LAYOUT_WIDTH = 150
+COMPACT_LAYOUT_HEIGHT = 34
+BRIDGE_META_MARKER_BEGIN = "__CODEX_TERMUX_META_BEGIN__"
+BRIDGE_META_MARKER_END = "__CODEX_TERMUX_META_END__"
 
 
 def iso_now() -> str:
@@ -87,6 +91,60 @@ def short_message(text: str, limit: int = 320) -> str:
     if len(stripped) <= limit:
         return stripped
     return stripped[: limit - 3] + "..."
+
+
+def is_bridge_meta_payload(text: str) -> bool:
+    return BRIDGE_META_MARKER_BEGIN in text and BRIDGE_META_MARKER_END in text
+
+
+def is_bridge_internal_command(text: str) -> bool:
+    lowered = text.lower()
+    return "codex-bridge/termux-bridge-" in lowered and (
+        "stdout_file=" in lowered
+        or "stderr_file=" in lowered
+        or "status_file=" in lowered
+        or "done_file=" in lowered
+        or "pid_file=" in lowered
+        or BRIDGE_META_MARKER_BEGIN.lower() in lowered
+    )
+
+
+def terminal_size(console: Any | None) -> tuple[int, int]:
+    if console is not None:
+        try:
+            size = console.size
+            width = max(0, int(size.width))
+            height = max(0, int(size.height))
+            if width and height:
+                return width, height
+        except Exception:
+            pass
+    fallback = shutil.get_terminal_size((DEFAULT_REPORT_WIDTH, 40))
+    return max(0, fallback.columns), max(0, fallback.lines)
+
+
+def should_use_compact_layout(console: Any | None) -> bool:
+    layout_override = os.environ.get("TERMUXAI_AUDIT_LAYOUT", "").strip().lower()
+    if layout_override == "compact":
+        return True
+    if layout_override == "wide":
+        return False
+    width, height = terminal_size(console)
+    return width <= COMPACT_LAYOUT_WIDTH or height <= COMPACT_LAYOUT_HEIGHT
+
+
+def build_key_value_group(
+    rich: RichBundle,
+    items: list[tuple[str, str]],
+    *,
+    value_limit: int = 320,
+) -> Any:
+    rows: list[Any] = []
+    for label, value in items:
+        row = rich.Text(f"{label}: ", style="bold cyan")
+        row.append(short_message(value or "-", limit=value_limit), style="white")
+        rows.append(row)
+    return rich.Group(*rows) if rows else rich.Text("-")
 
 
 class RichUnavailable(RuntimeError):
@@ -299,6 +357,9 @@ class ExecRunner:
 
     def style_for_status(self, status: str) -> tuple[str, str]:
         return self.screen_symbols.get(status, ("?", "white"))
+
+    def use_compact_layout(self) -> bool:
+        return should_use_compact_layout(self.console)
 
     def normalize_command(self, step: Step) -> list[str] | str:
         command: list[str] | str = step.command
@@ -854,29 +915,49 @@ class ExecRunner:
         current_name = "aguardando"
         if self.current_index is not None and self.current_index < len(self.steps):
             current_name = self.steps[self.current_index].name
+        compact = self.use_compact_layout()
 
         header = self.rich.Table.grid(expand=True)
-        header.add_column(ratio=4)
-        header.add_column(ratio=2)
-        header.add_column(ratio=2)
-        header.add_row(
-            self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"),
-            self.rich.Text(f"Run ID: {self.run_id}", style="bold cyan"),
-            self.rich.Text(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), style="bold white"),
-        )
-        header.add_row(
-            self.rich.Text(f"Atual: {current_name}", style="bold magenta"),
-            self.rich.Text(f"Health: {health}", style=f"bold {health_color}"),
-            self.rich.Text(f"Duração: {self.total_duration():.1f}s", style="white"),
-        )
-        header.add_row(
-            self.rich.Text(
-                f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
-                style="white",
-            ),
-            self.rich.Text(f"Host: {socket.gethostname()}", style="cyan"),
-            self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz / Poll {self.poll_s * 1000:.0f}ms", style="white"),
-        )
+        if compact:
+            header.add_column(ratio=1)
+            header.add_row(self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"))
+            header.add_row(self.rich.Text(f"Run: {self.run_id}", style="bold cyan"))
+            header.add_row(self.rich.Text(f"Atual: {current_name}", style="bold magenta"))
+            header.add_row(
+                self.rich.Text(
+                    f"Health {health} | Duração {self.total_duration():.1f}s | Host {socket.gethostname()}",
+                    style=f"bold {health_color}" if health != "PASS" else "white",
+                )
+            )
+            header.add_row(
+                self.rich.Text(
+                    f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
+                    style="white",
+                )
+            )
+            header.add_row(self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz / Poll {self.poll_s * 1000:.0f}ms", style="white"))
+        else:
+            header.add_column(ratio=4)
+            header.add_column(ratio=2)
+            header.add_column(ratio=2)
+            header.add_row(
+                self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"),
+                self.rich.Text(f"Run ID: {self.run_id}", style="bold cyan"),
+                self.rich.Text(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), style="bold white"),
+            )
+            header.add_row(
+                self.rich.Text(f"Atual: {current_name}", style="bold magenta"),
+                self.rich.Text(f"Health: {health}", style=f"bold {health_color}"),
+                self.rich.Text(f"Duração: {self.total_duration():.1f}s", style="white"),
+            )
+            header.add_row(
+                self.rich.Text(
+                    f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
+                    style="white",
+                ),
+                self.rich.Text(f"Host: {socket.gethostname()}", style="cyan"),
+                self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz / Poll {self.poll_s * 1000:.0f}ms", style="white"),
+            )
         group = self.rich.Group(
             header,
             self.rich.ProgressBar(total=100, completed=progress_pct, width=None),
@@ -886,6 +967,25 @@ class ExecRunner:
 
     def render_pipeline(self) -> Any:
         assert self.rich is not None
+        if self.use_compact_layout():
+            rows: list[Any] = []
+            for idx, (step, state) in enumerate(zip(self.steps, self.states), start=1):
+                icon, color = self.style_for_status(state.status)
+                heading = self.rich.Text(f"{idx:02d} {icon} ", style=f"bold {color}")
+                heading.append(step.name, style="bold white" if idx - 1 == self.current_index and state.status == "running" else "white")
+                if step.severity:
+                    heading.append(f" [{step.severity}]", style="yellow" if step.severity == "warn" else "red" if step.severity in {"error", "critical"} else "cyan")
+                output_count = state.stdout_lines + state.stderr_lines + state.combined_lines
+                meta = self.rich.Text(
+                    f"status={state.status}  rc={'-' if state.return_code is None else state.return_code}  tempo={'-' if not state.duration_s else f'{state.duration_s:.1f}s'}  out={output_count}",
+                    style="white",
+                )
+                rows.append(heading)
+                rows.append(meta)
+            if not rows:
+                rows.append(self.rich.Text("Aguardando etapas.", style="white"))
+            return self.rich.Panel(self.rich.Group(*rows), title="Pipeline", border_style="cyan", box=self.rich.box.ROUNDED)
+
         table = self.rich.Table(expand=True, box=self.rich.box.SIMPLE_HEAVY)
         table.add_column("#", justify="right", width=3)
         table.add_column("Status", width=12)
@@ -920,6 +1020,27 @@ class ExecRunner:
 
         step = self.steps[self.current_index]
         state = self.states[self.current_index]
+        if self.use_compact_layout():
+            details = [
+                ("Nome", step.name),
+                ("Descrição", step.description or "-"),
+                ("Comando", self.command_display(step)),
+                ("Diretório", step.cwd or os.getcwd()),
+                ("Modo", "PTY" if step.pty else "PIPE"),
+                ("Shell", "sim" if step.shell else "não"),
+                ("PID", "-" if state.pid is None else str(state.pid)),
+                ("Timeout", "-" if step.timeout is None else f"{step.timeout}s"),
+                ("RC esperado", ", ".join(str(value) for value in step.expected_returncodes)),
+                ("Falha", "continuar" if step.continue_on_error else "parar"),
+                ("Tags", ", ".join(step.tags) if step.tags else "-"),
+            ]
+            return self.rich.Panel(
+                build_key_value_group(self.rich, details, value_limit=220),
+                title="Etapa atual",
+                border_style="magenta",
+                box=self.rich.box.ROUNDED,
+            )
+
         grid = self.rich.Table.grid(expand=True)
         grid.add_column(style="bold cyan", width=14)
         grid.add_column(style="white")
@@ -967,6 +1088,16 @@ class ExecRunner:
 
     def render_footer(self) -> Any:
         assert self.rich is not None
+        if self.use_compact_layout():
+            lines = self.rich.Group(
+                self.rich.Text(f"Arquivos: {self.run_dir}", style="white"),
+                self.rich.Text("Ctrl+C encerra com auditoria salva", style="bold magenta"),
+                self.rich.Text(
+                    "report.html/report.svg/report.txt gerados no fim" if self.save_reports else "reports desativados",
+                    style="bold green" if self.save_reports else "white",
+                ),
+            )
+            return self.rich.Panel(lines, border_style="blue", box=self.rich.box.ROUNDED)
         text = self.rich.Text()
         text.append("Arquivos: ", style="bold cyan")
         text.append(str(self.run_dir), style="white")
@@ -978,14 +1109,23 @@ class ExecRunner:
     def render(self) -> Any:
         assert self.rich is not None
         layout = self.rich.Layout()
+        compact = self.use_compact_layout()
         layout.split_column(
-            self.rich.Layout(name="header", size=7),
+            self.rich.Layout(name="header", size=9 if compact else 7),
             self.rich.Layout(name="main", ratio=1),
-            self.rich.Layout(name="footer", size=3),
+            self.rich.Layout(name="footer", size=5 if compact else 3),
         )
-        layout["main"].split_row(self.rich.Layout(name="left", ratio=3), self.rich.Layout(name="right", ratio=2))
-        layout["left"].split_column(self.rich.Layout(name="pipeline", ratio=2), self.rich.Layout(name="output", ratio=2))
-        layout["right"].split_column(self.rich.Layout(name="current", ratio=2), self.rich.Layout(name="events", ratio=2))
+        if compact:
+            layout["main"].split_column(
+                self.rich.Layout(name="current", ratio=2),
+                self.rich.Layout(name="pipeline", ratio=3),
+                self.rich.Layout(name="output", ratio=2),
+                self.rich.Layout(name="events", ratio=2),
+            )
+        else:
+            layout["main"].split_row(self.rich.Layout(name="left", ratio=3), self.rich.Layout(name="right", ratio=2))
+            layout["left"].split_column(self.rich.Layout(name="pipeline", ratio=2), self.rich.Layout(name="output", ratio=2))
+            layout["right"].split_column(self.rich.Layout(name="current", ratio=2), self.rich.Layout(name="events", ratio=2))
         layout["header"].update(self.render_header())
         layout["pipeline"].update(self.render_pipeline())
         layout["output"].update(self.render_output())
@@ -1319,11 +1459,17 @@ class SessionModel:
         return self.steps[seq]
 
     def process_event(self, event: dict[str, Any]) -> None:
-        self.recent_events.append(event)
         event_type = str(event.get("type", "note"))
         seq_raw = event.get("seq")
         seq = int(seq_raw) if isinstance(seq_raw, int) or (isinstance(seq_raw, str) and seq_raw.isdigit()) else None
         message = str(event.get("message", ""))
+
+        if event_type == "command" and is_bridge_internal_command(message):
+            return
+        if event_type == "command_result" and is_bridge_meta_payload(message):
+            return
+
+        self.recent_events.append(event)
 
         if event_type == "session_start":
             self.session_started_at = str(event.get("ts", self.session_started_at or ""))
@@ -1483,34 +1629,63 @@ class SessionWatcher:
     def style_for_status(self, status: str) -> tuple[str, str]:
         return self.screen_symbols.get(status, ("?", "white"))
 
+    def use_compact_layout(self) -> bool:
+        layout_override = os.environ.get("TERMUXAI_AUDIT_LAYOUT", "").strip().lower()
+        if layout_override == "wide":
+            return False
+        if layout_override in {"compact", "", "auto"}:
+            return True
+        return should_use_compact_layout(self.console)
+
     def render_header(self) -> Any:
         counts = self.model.counts()
         progress_pct = int(self.model.overall_progress() * 100)
         label = str(self.model.manifest.get("label", self.model.manifest.get("session_label", self.session_dir.name)))
         current_name = self.model.current_label()
+        compact = self.use_compact_layout()
 
         header = self.rich.Table.grid(expand=True)
-        header.add_column(ratio=4)
-        header.add_column(ratio=2)
-        header.add_column(ratio=2)
-        header.add_row(
-            self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"),
-            self.rich.Text(f"Sessão: {label}", style="bold cyan"),
-            self.rich.Text(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), style="bold white"),
-        )
-        header.add_row(
-            self.rich.Text(f"Atual: {current_name}", style="bold magenta"),
-            self.rich.Text(f"Health: {self.model.health}", style=f"bold {'green' if self.model.health == 'PASS' else 'yellow' if self.model.health == 'WARN' else 'red'}"),
-            self.rich.Text(f"Duração: {self.model.duration_seconds():.1f}s", style="white"),
-        )
-        header.add_row(
-            self.rich.Text(
-                f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
-                style="white",
-            ),
-            self.rich.Text(f"Host: {self.model.manifest.get('host', '-')}", style="cyan"),
-            self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz", style="white"),
-        )
+        health_style = f"bold {'green' if self.model.health == 'PASS' else 'yellow' if self.model.health == 'WARN' else 'red'}"
+        if compact:
+            header.add_column(ratio=1)
+            header.add_row(self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"))
+            header.add_row(self.rich.Text(f"Sessão: {label}", style="bold cyan"))
+            header.add_row(self.rich.Text(f"Atual: {current_name}", style="bold magenta"))
+            header.add_row(
+                self.rich.Text(
+                    f"Health {self.model.health} | Duração {self.model.duration_seconds():.1f}s | Host {self.model.manifest.get('host', '-')}",
+                    style=health_style,
+                )
+            )
+            header.add_row(
+                self.rich.Text(
+                    f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
+                    style="white",
+                )
+            )
+            header.add_row(self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz", style="white"))
+        else:
+            header.add_column(ratio=4)
+            header.add_column(ratio=2)
+            header.add_column(ratio=2)
+            header.add_row(
+                self.rich.Text(f"{APP_NAME} {APP_VERSION}", style="bold white on blue"),
+                self.rich.Text(f"Sessão: {label}", style="bold cyan"),
+                self.rich.Text(datetime.now().strftime("%Y-%m-%d %H:%M:%S"), style="bold white"),
+            )
+            header.add_row(
+                self.rich.Text(f"Atual: {current_name}", style="bold magenta"),
+                self.rich.Text(f"Health: {self.model.health}", style=health_style),
+                self.rich.Text(f"Duração: {self.model.duration_seconds():.1f}s", style="white"),
+            )
+            header.add_row(
+                self.rich.Text(
+                    f"OK {counts['success']}  FAIL {counts['failed']}  RUN {counts['running']}  SKIP {counts['skipped']}  PEND {counts['pending']}",
+                    style="white",
+                ),
+                self.rich.Text(f"Host: {self.model.manifest.get('host', '-')}", style="cyan"),
+                self.rich.Text(f"Refresh {self.refresh_hz:.1f}Hz", style="white"),
+            )
         group = self.rich.Group(
             header,
             self.rich.ProgressBar(total=100, completed=progress_pct, width=None),
@@ -1519,6 +1694,24 @@ class SessionWatcher:
         return self.rich.Panel(group, border_style="blue", box=self.rich.box.ROUNDED)
 
     def render_pipeline(self) -> Any:
+        if self.use_compact_layout():
+            rows: list[Any] = []
+            for step in self.model.sorted_steps():
+                icon, color = self.style_for_status(step.status)
+                heading = self.rich.Text(f"{step.seq:02d} {icon} ", style=f"bold {color}")
+                heading.append(step.name or "-", style="bold white" if step.status == "running" else "white")
+                if step.context:
+                    heading.append(f" [{step.context}]", style="cyan")
+                meta = self.rich.Text(
+                    f"status={step.status}  rc={'-' if step.rc is None else step.rc}  tempo={'-' if step.duration_s == 0 else f'{step.duration_s:.1f}s'}",
+                    style="white",
+                )
+                rows.append(heading)
+                rows.append(meta)
+            if not rows:
+                rows.append(self.rich.Text("Aguardando eventos...", style="white"))
+            return self.rich.Panel(self.rich.Group(*rows), title="Pipeline", border_style="cyan", box=self.rich.box.ROUNDED)
+
         table = self.rich.Table(expand=True, box=self.rich.box.SIMPLE_HEAVY)
         table.add_column("#", justify="right", width=4)
         table.add_column("Status", width=12)
@@ -1547,6 +1740,24 @@ class SessionWatcher:
         step = self.model.steps.get(seq)
         if step is None:
             return self.rich.Panel("Aguardando etapas.", title="Etapa atual", border_style="magenta", box=self.rich.box.ROUNDED)
+        if self.use_compact_layout():
+            details = [
+                ("Nome", step.name),
+                ("Contexto", step.context or "-"),
+                ("Descrição", step.description or "-"),
+                ("Comando", step.command or "-"),
+                ("Mensagem", step.last_message or "-"),
+                (
+                    "Progresso",
+                    "-" if step.current is None or step.total is None else f"{step.current}/{step.total} ({step.percent or 0}%)",
+                ),
+            ]
+            return self.rich.Panel(
+                build_key_value_group(self.rich, details, value_limit=220),
+                title="Etapa atual",
+                border_style="magenta",
+                box=self.rich.box.ROUNDED,
+            )
         grid = self.rich.Table.grid(expand=True)
         grid.add_column(style="bold cyan", width=14)
         grid.add_column(style="white")
@@ -1581,6 +1792,15 @@ class SessionWatcher:
         return self.rich.Panel(self.rich.Group(*rows), title="Eventos", border_style="yellow", box=self.rich.box.ROUNDED)
 
     def render_footer(self) -> Any:
+        if self.use_compact_layout():
+            lines = self.rich.Group(
+                self.rich.Text(f"Sessão espelhada: {self.session_dir}", style="white"),
+                self.rich.Text(
+                    "sessão finalizada" if self.model.session_finished_at else "aguardando conclusão",
+                    style="bold green" if self.model.session_finished_at else "bold magenta",
+                ),
+            )
+            return self.rich.Panel(lines, border_style="blue", box=self.rich.box.ROUNDED)
         text = self.rich.Text()
         text.append("Sessão espelhada: ", style="bold cyan")
         text.append(str(self.session_dir), style="white")
@@ -1592,14 +1812,23 @@ class SessionWatcher:
 
     def render(self) -> Any:
         layout = self.rich.Layout()
+        compact = self.use_compact_layout()
         layout.split_column(
-            self.rich.Layout(name="header", size=7),
+            self.rich.Layout(name="header", size=9 if compact else 7),
             self.rich.Layout(name="main", ratio=1),
-            self.rich.Layout(name="footer", size=3),
+            self.rich.Layout(name="footer", size=4 if compact else 3),
         )
-        layout["main"].split_row(self.rich.Layout(name="left", ratio=3), self.rich.Layout(name="right", ratio=2))
-        layout["left"].split_column(self.rich.Layout(name="pipeline", ratio=2), self.rich.Layout(name="activity", ratio=2))
-        layout["right"].split_column(self.rich.Layout(name="current", ratio=2), self.rich.Layout(name="events", ratio=2))
+        if compact:
+            layout["main"].split_column(
+                self.rich.Layout(name="current", ratio=2),
+                self.rich.Layout(name="pipeline", ratio=3),
+                self.rich.Layout(name="activity", ratio=2),
+                self.rich.Layout(name="events", ratio=2),
+            )
+        else:
+            layout["main"].split_row(self.rich.Layout(name="left", ratio=3), self.rich.Layout(name="right", ratio=2))
+            layout["left"].split_column(self.rich.Layout(name="pipeline", ratio=2), self.rich.Layout(name="activity", ratio=2))
+            layout["right"].split_column(self.rich.Layout(name="current", ratio=2), self.rich.Layout(name="events", ratio=2))
         layout["header"].update(self.render_header())
         layout["pipeline"].update(self.render_pipeline())
         layout["activity"].update(self.render_activity())

@@ -194,6 +194,7 @@ termux::require_host_command \
 DEVICE_ID="$(termux::resolve_target_device "$DEVICE_ID")"
 termux::audit_session_begin "Regressao do workspace (${SUITE})" "$0" "$DEVICE_ID"
 AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+termux::prechange_audit_gate "Regressao do workspace (${SUITE})" 'baseline_validation' "$DEVICE_ID"
 
 resolve_secondary_package() {
   local package_name

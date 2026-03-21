@@ -153,6 +153,7 @@ resolve_device() {
   DEVICE_ID=$(termux::resolve_target_device)
   termux::audit_session_begin 'Reinstalação oficial do ecossistema Termux' "$0" "$DEVICE_ID"
   AUDIT_OWNER="${TERMUXAI_AUDIT_SESSION_OWNER:-0}"
+  termux::prechange_audit_gate 'Reinstalação oficial do ecossistema Termux' 'termux_reinstall' "$DEVICE_ID"
 }
 
 verify_device_abi() {
